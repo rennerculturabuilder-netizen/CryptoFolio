@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  password      String
+  name          String?
+  role          String      @default("user")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  portfolios    Portfolio[]
+}
+
+model Portfolio {
+  id           String        @id @default(cuid())
+  name         String
+  baseFiat     String        @default("USD")
+  ownerId      String
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+
+  @@index([ownerId])
+}
+
+model Asset {
+  id            String          @id @default(cuid())
+  symbol        String          @unique
+  name          String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  transactions  Transaction[]
+  snapshots     PriceSnapshot[]
+  buyBands      BuyBand[]
+}
+
+model Transaction {
+  id          String    @id @default(cuid())
+  type        String
+  quantity    Decimal   @db.Decimal(18, 8)
+  price       Decimal   @db.Decimal(18, 8)
+  portfolioId String
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  assetId     String
+  asset       Asset     @relation(fields: [assetId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([portfolioId])
+  @@index([assetId])
+}
+
+model PriceSnapshot {
+  id        String   @id @default(cuid())
+  price     Decimal  @db.Decimal(18, 8)
+  assetId   String
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([assetId])
+  @@index([createdAt])
+}
+
+model BuyBand {
+  id          String   @id @default(cuid())
+  targetPrice Decimal  @db.Decimal(18, 8)
+  quantity    Decimal  @db.Decimal(18, 8)
+  executed    Boolean  @default(false)
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assetId])
+}
