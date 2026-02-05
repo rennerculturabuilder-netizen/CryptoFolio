@@ -1,7 +1,7 @@
 # Crypto Portfolio — Progresso
 
 ## Última atualização
-05/02/2026 22:10
+05/02/2026 23:50
 
 ## ✅ Concluído
 - Projeto Next.js 14 criado com TypeScript e App Router
@@ -24,17 +24,25 @@
 - Bloqueio de DELETE de portfolio com transações
 - Cálculo WAC (custo médio ponderado) por asset — GET /api/portfolios/:id/wac
 - Fix: Zod v4 usa `.issues` em vez de `.errors` (corrigido em todos os endpoints)
+- Campo `valueUsd` adicionado em Transaction (suporte a swap crypto-crypto)
+- handleSwap atualizado: usa `valueUsd` quando fornecido, fallback pra `quoteQty` (stables)
+- Validação Zod do swap atualizada com `valueUsd` opcional + refine
+- Vitest configurado com testes unitários (6) e integração com DB (1) — 7/7 passando
+- Arquivo `calcPositions.ts` movido para `src/lib/portfolio/calc.ts` com função pura `processTransactions` extraída
+- Balance check e safety check de fee no handleSwap
+- JSDoc documentando uso do `valueUsd` em swaps
 
 ## 🚧 Em progresso
 - Nenhum
 
 ## ⚠️ Problemas encontrados
-- Nenhum
+- `prisma migrate dev` não roda em terminal não-interativo (Claude Code) — usar direto no terminal ou `db push`
 
 ## 📋 Próximos passos
-1. Implementar páginas de login/registro (frontend)
-2. Adicionar proteção de rotas com middleware NextAuth
-3. Dashboard com posições e WAC visual
+1. Rodar `prisma migrate dev --name add-transaction-value-usd` no terminal
+2. Implementar páginas de login/registro (frontend)
+3. Adicionar proteção de rotas com middleware NextAuth
+4. Dashboard com posições e WAC visual
 
 ## 🛠️ Comandos úteis
 ```bash
@@ -52,4 +60,8 @@ npm run dev
 
 # Prisma Studio
 npm run db:studio
+
+# Testes
+npm test          # vitest run
+npm run test:watch # vitest watch
 ```

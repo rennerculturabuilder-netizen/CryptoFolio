@@ -6,6 +6,8 @@ import { requirePortfolioAccess } from "@/lib/guards";
 
 type Params = { params: { id: string; txId: string } };
 
+const assetSelect = { id: true, symbol: true, name: true };
+
 // GET /api/portfolios/:id/transactions/:txId
 export async function GET(_request: Request, { params }: Params) {
   try {
@@ -22,7 +24,11 @@ export async function GET(_request: Request, { params }: Params) {
 
     const transaction = await prisma.transaction.findFirst({
       where: { id: params.txId, portfolioId: params.id },
-      include: { asset: { select: { id: true, symbol: true, name: true } } },
+      include: {
+        baseAsset: { select: assetSelect },
+        quoteAsset: { select: assetSelect },
+        feeAsset: { select: assetSelect },
+      },
     });
 
     if (!transaction) {

@@ -32,29 +32,58 @@ model Portfolio {
 }
 
 model Asset {
-  id            String          @id @default(cuid())
-  symbol        String          @unique
-  name          String
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  transactions  Transaction[]
-  snapshots     PriceSnapshot[]
-  buyBands      BuyBand[]
+  id                String          @id @default(cuid())
+  symbol            String          @unique
+  name              String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  baseTransactions  Transaction[]   @relation("BaseAsset")
+  quoteTransactions Transaction[]   @relation("QuoteAsset")
+  feeTransactions   Transaction[]   @relation("FeeAsset")
+  snapshots         PriceSnapshot[]
+  buyBands          BuyBand[]
 }
 
 model Transaction {
-  id          String    @id @default(cuid())
-  type        String
-  quantity    Decimal   @db.Decimal(18, 8)
-  price       Decimal   @db.Decimal(18, 8)
-  portfolioId String
-  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
-  assetId     String
-  asset       Asset     @relation(fields: [assetId], references: [id])
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(cuid())
+  type          String    // BUY, SELL, SWAP, DEPOSIT, WITHDRAW, FEE
+  portfolioId   String
+  portfolio     Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  timestamp     DateTime
+  venue         String?
+  notes         String?
+
+  // Base asset (BUY, SELL, SWAP, DEPOSIT, WITHDRAW)
+  baseAssetId   String?
+  baseAsset     Asset?    @relation("BaseAsset", fields: [baseAssetId], references: [id])
+  baseQty       Decimal?  @db.Decimal(18, 8)
+
+  // Quote asset (BUY, SELL, SWAP)
+  quoteAssetId  String?
+  quoteAsset    Asset?    @relation("QuoteAsset", fields: [quoteAssetId], references: [id])
+  quoteQty      Decimal?  @db.Decimal(18, 8)
+
+  // Price (BUY, SELL — optional)
+  price         Decimal?  @db.Decimal(18, 8)
+
+  // Fee (optional em BUY, SELL, SWAP, DEPOSIT, WITHDRAW — obrigatório em FEE)
+  feeAssetId    String?
+  feeAsset      Asset?    @relation("FeeAsset", fields: [feeAssetId], references: [id])
+  feeQty        Decimal?  @db.Decimal(18, 8)
+
+  // Cost basis USD (DEPOSIT, WITHDRAW)
+  costBasisUsd  Decimal?  @db.Decimal(18, 8)
+
+  // Valor USD real do swap (crypto-crypto)
+  // Obrigatório para swap crypto-crypto, opcional para swap pra stable
+  valueUsd      Decimal?  @db.Decimal(18, 8)
+
+  createdAt     DateTime  @default(now())
 
   @@index([portfolioId])
-  @@index([assetId])
+  @@index([baseAssetId])
+  @@index([quoteAssetId])
+  @@index([timestamp])
 }
 
 model PriceSnapshot {

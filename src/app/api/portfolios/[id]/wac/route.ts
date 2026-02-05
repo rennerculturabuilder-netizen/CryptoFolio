@@ -3,22 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requirePortfolioAccess } from "@/lib/guards";
-import { Decimal } from "@prisma/client/runtime/library";
+import { calcPositions } from "@/lib/portfolio/calc";
 
 type Params = { params: { id: string } };
 
-interface AssetPosition {
-  assetId: string;
-  symbol: string;
-  name: string;
-  totalBought: string;
-  totalSold: string;
-  balance: string;
-  totalCost: string;
-  wac: string;
-}
-
-// GET /api/portfolios/:id/wac — calcula custo médio ponderado por asset
+// GET /api/portfolios/:id/wac
 export async function GET(_request: Request, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
@@ -32,90 +21,27 @@ export async function GET(_request: Request, { params }: Params) {
       session.user.role
     );
 
-    const transactions = await prisma.transaction.findMany({
-      where: { portfolioId: params.id },
-      include: { asset: { select: { id: true, symbol: true, name: true } } },
-      orderBy: { createdAt: "asc" },
+    const positions = await calcPositions(params.id);
+
+    // Enriquecer com symbol/name dos assets
+    const assetIds = positions.map((p) => p.assetId);
+    const assets = await prisma.asset.findMany({
+      where: { id: { in: assetIds } },
+      select: { id: true, symbol: true, name: true },
     });
+    const assetMap = new Map(assets.map((a) => [a.id, a]));
 
-    // Agrupar por asset e calcular WAC
-    const positions = new Map<
-      string,
-      {
-        symbol: string;
-        name: string;
-        balance: Decimal;
-        totalCost: Decimal;
-      }
-    >();
-
-    for (const tx of transactions) {
-      let pos = positions.get(tx.assetId);
-      if (!pos) {
-        pos = {
-          symbol: tx.asset.symbol,
-          name: tx.asset.name,
-          balance: new Decimal(0),
-          totalCost: new Decimal(0),
-        };
-        positions.set(tx.assetId, pos);
-      }
-
-      if (tx.type === "BUY") {
-        // WAC: acumula custo total e quantidade
-        pos.totalCost = pos.totalCost.plus(
-          new Decimal(tx.quantity.toString()).times(
-            new Decimal(tx.price.toString())
-          )
-        );
-        pos.balance = pos.balance.plus(new Decimal(tx.quantity.toString()));
-      } else {
-        // SELL: reduz quantidade, custo proporcional ao WAC atual
-        const sellQty = new Decimal(tx.quantity.toString());
-        if (pos.balance.greaterThan(0)) {
-          const currentWac = pos.totalCost.dividedBy(pos.balance);
-          pos.totalCost = pos.totalCost.minus(currentWac.times(sellQty));
-          pos.balance = pos.balance.minus(sellQty);
-        }
-      }
-    }
-
-    const result: AssetPosition[] = [];
-
-    for (const [assetId, pos] of Array.from(positions.entries())) {
-      const wac =
-        pos.balance.greaterThan(0)
-          ? pos.totalCost.dividedBy(pos.balance)
-          : new Decimal(0);
-
-      // Calcular totais brutos para referência
-      const buyTxs = transactions.filter(
-        (tx) => tx.assetId === assetId && tx.type === "BUY"
-      );
-      const sellTxs = transactions.filter(
-        (tx) => tx.assetId === assetId && tx.type === "SELL"
-      );
-
-      const totalBought = buyTxs.reduce(
-        (sum, tx) => sum.plus(new Decimal(tx.quantity.toString())),
-        new Decimal(0)
-      );
-      const totalSold = sellTxs.reduce(
-        (sum, tx) => sum.plus(new Decimal(tx.quantity.toString())),
-        new Decimal(0)
-      );
-
-      result.push({
-        assetId,
-        symbol: pos.symbol,
-        name: pos.name,
-        totalBought: totalBought.toFixed(8),
-        totalSold: totalSold.toFixed(8),
-        balance: pos.balance.toFixed(8),
-        totalCost: pos.totalCost.toFixed(2),
-        wac: wac.toFixed(8),
-      });
-    }
+    const result = positions.map((p) => {
+      const asset = assetMap.get(p.assetId);
+      return {
+        assetId: p.assetId,
+        symbol: asset?.symbol ?? "???",
+        name: asset?.name ?? "Desconhecido",
+        balance: p.qty.toFixed(8),
+        totalCost: p.costUsdTotal.toFixed(2),
+        wac: p.avgCostUsd.toFixed(8),
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error) {
