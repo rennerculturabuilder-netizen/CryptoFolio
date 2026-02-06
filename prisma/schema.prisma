@@ -27,8 +27,25 @@ model Portfolio {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
+  buyBands     BuyBand[]
+  snapshots    PortfolioSnapshot[]
 
   @@index([ownerId])
+}
+
+model PortfolioSnapshot {
+  id                String   @id @default(cuid())
+  portfolioId       String
+  portfolio         Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  timestamp         DateTime @default(now())
+  valueUsd          Decimal  @db.Decimal(18, 8)
+  costBasisUsd      Decimal  @db.Decimal(18, 8)
+  unrealizedPnl     Decimal  @db.Decimal(18, 8)
+  unrealizedPct     Decimal  @db.Decimal(18, 8)
+  positionsSnapshot Json
+
+  @@index([portfolioId])
+  @@index([timestamp])
 }
 
 model Asset {
@@ -89,6 +106,7 @@ model Transaction {
 model PriceSnapshot {
   id        String   @id @default(cuid())
   price     Decimal  @db.Decimal(18, 8)
+  source    String   @default("manual")
   assetId   String
   asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
@@ -98,14 +116,19 @@ model PriceSnapshot {
 }
 
 model BuyBand {
-  id          String   @id @default(cuid())
-  targetPrice Decimal  @db.Decimal(18, 8)
-  quantity    Decimal  @db.Decimal(18, 8)
-  executed    Boolean  @default(false)
+  id          String    @id @default(cuid())
+  targetPrice Decimal   @db.Decimal(18, 8)
+  quantity    Decimal   @db.Decimal(18, 8)
+  executed    Boolean   @default(false)
+  order       Int       @default(0)
   assetId     String
-  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  asset       Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  portfolioId String
+  portfolio   Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
+  @@unique([portfolioId, assetId, order])
   @@index([assetId])
+  @@index([portfolioId])
 }

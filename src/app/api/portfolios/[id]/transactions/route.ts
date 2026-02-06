@@ -147,6 +147,10 @@ export async function POST(request: Request, { params }: Params) {
       txData.costBasisUsd = new Decimal(data.costBasisUsd);
     }
 
+    if ("valueUsd" in data && data.valueUsd) {
+      txData.valueUsd = new Decimal(data.valueUsd);
+    }
+
     const transaction = await prisma.transaction.create({
       data: txData as any,
       include: {
@@ -187,16 +191,16 @@ async function getAssetBalance(
   let balance = new Decimal(0);
 
   for (const tx of txs) {
-    // Entradas no asset
+    // BUY/DEPOSIT: base entra
     if (
-      (tx.type === "BUY" || tx.type === "SWAP" || tx.type === "DEPOSIT") &&
+      (tx.type === "BUY" || tx.type === "DEPOSIT") &&
       tx.baseAssetId === assetId &&
       tx.baseQty
     ) {
       balance = balance.plus(tx.baseQty);
     }
 
-    // Saídas do asset
+    // SELL/WITHDRAW: base sai
     if (
       (tx.type === "SELL" || tx.type === "WITHDRAW") &&
       tx.baseAssetId === assetId &&
@@ -205,17 +209,22 @@ async function getAssetBalance(
       balance = balance.minus(tx.baseQty);
     }
 
-    // SWAP: quote asset sai
-    if (tx.type === "SWAP" && tx.quoteAssetId === assetId && tx.quoteQty) {
-      balance = balance.minus(tx.quoteQty);
+    // SWAP: base sai, quote entra
+    if (tx.type === "SWAP") {
+      if (tx.baseAssetId === assetId && tx.baseQty) {
+        balance = balance.minus(tx.baseQty);
+      }
+      if (tx.quoteAssetId === assetId && tx.quoteQty) {
+        balance = balance.plus(tx.quoteQty);
+      }
     }
 
-    // BUY: quote asset sai
+    // BUY: quote sai (gasta fiat/stable)
     if (tx.type === "BUY" && tx.quoteAssetId === assetId && tx.quoteQty) {
       balance = balance.minus(tx.quoteQty);
     }
 
-    // SELL: quote asset entra
+    // SELL: quote entra (recebe fiat/stable)
     if (tx.type === "SELL" && tx.quoteAssetId === assetId && tx.quoteQty) {
       balance = balance.plus(tx.quoteQty);
     }

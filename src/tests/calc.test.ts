@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import Decimal from 'decimal.js';
 import { processTransactions, Position } from '../lib/portfolio/calc';
 
 function findPos(positions: Position[], assetId: string): Position {

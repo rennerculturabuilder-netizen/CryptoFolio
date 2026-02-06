@@ -30,7 +30,7 @@ const swapSchema = baseTransactionSchema.extend({
   feeAssetId: z.string().optional(),
   feeQty: z.string().regex(/^\d+\.?\d*$/).optional(),
 }).refine(
-  (data) => {
+  (_data) => {
     // Por hora, deixar flexível no MVP
     // Futuramente: validar valueUsd obrigatório quando quoteAsset não é stablecoin
     return true;

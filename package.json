@@ -13,7 +13,9 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "snapshot": "npx tsx scripts/daily-snapshot.ts",
+    "cron:snapshot": "npx tsx scripts/cron-snapshots.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -24,14 +26,17 @@
     "decimal.js": "^10.6.0",
     "next": "14.2.35",
     "next-auth": "^4.24.13",
+    "node-cron": "^4.2.1",
     "prisma": "^5.22.0",
     "react": "^18",
     "react-dom": "^18",
+    "recharts": "^3.7.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
+    "@types/node-cron": "^3.0.11",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "dotenv": "^17.2.3",
