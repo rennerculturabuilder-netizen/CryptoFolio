@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Shield } from "lucide-react";
 
 type User = {
   id: string;
@@ -17,78 +22,99 @@ type User = {
 export default function AdminUsersPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchUsers = useCallback(async () => {
-    const res = await fetch("/api/admin/users");
-    if (res.status === 403) {
-      router.push("/dashboard");
-      return;
-    }
-    const data = await res.json();
-    setUsers(data);
-    setLoading(false);
-  }, [router]);
+  const { data: users = [], isLoading } = useQuery<User[]>({
+    queryKey: ["admin-users"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/users");
+      if (res.status === 403) {
+        router.push("/dashboard");
+        return [];
+      }
+      return res.json();
+    },
+  });
 
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  async function updateRole(userId: string, newRole: string) {
-    await fetch(`/api/admin/users/${userId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: newRole }),
-    });
-    fetchUsers();
-  }
-
-  if (loading) return <p className="text-gray-500">Carregando...</p>;
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+  });
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-6">Gerenciar Usuários</h1>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Shield className="h-6 w-6" />
+        <h1 className="text-xl font-bold">Gerenciar Usuários</h1>
+        {!isLoading && (
+          <Badge variant="secondary">{users.length} usuários</Badge>
+        )}
+      </div>
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-gray-500">
-            <th className="py-2 font-medium">Email</th>
-            <th className="py-2 font-medium">Nome</th>
-            <th className="py-2 font-medium">Role</th>
-            <th className="py-2 font-medium text-center">Portfolios</th>
-            <th className="py-2 font-medium">Criado em</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id} className="border-b hover:bg-gray-50">
-              <td className="py-2">{user.email}</td>
-              <td className="py-2 text-gray-600">{user.name || "—"}</td>
-              <td className="py-2">
-                <select
-                  value={user.role}
-                  onChange={(e) => updateRole(user.id, e.target.value)}
-                  disabled={user.id === session?.user?.id}
-                  className={`border rounded px-2 py-1 text-xs ${
-                    user.id === session?.user?.id ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  <option value="user">user</option>
-                  <option value="admin">admin</option>
-                </select>
-                {user.id === session?.user?.id && (
-                  <span className="text-xs text-gray-400 ml-1">(você)</span>
-                )}
-              </td>
-              <td className="py-2 text-center">{user._count.portfolios}</td>
-              <td className="py-2 text-xs text-gray-500">
-                {new Date(user.createdAt).toLocaleDateString("pt-BR")}
-              </td>
-            </tr>
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-12 w-full" />
           ))}
-        </tbody>
-      </table>
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Nome</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead className="text-center">Portfolios</TableHead>
+              <TableHead>Criado em</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => {
+              const isMe = user.id === session?.user?.id;
+              return (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    {user.email}
+                    {isMe && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        você
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{user.name || "—"}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={user.role}
+                      onValueChange={(role) => updateRoleMutation.mutate({ userId: user.id, role })}
+                      disabled={isMe}
+                    >
+                      <SelectTrigger className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">user</SelectItem>
+                        <SelectItem value="admin">admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-center">{user._count.portfolios}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(user.createdAt).toLocaleDateString("pt-BR")}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
     </div>
   );
 }

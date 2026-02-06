@@ -1,7 +1,7 @@
 # Crypto Portfolio — Progresso
 
 ## Última atualização
-06/02/2026 01:44
+06/02/2026 10:00
 
 ## ✅ Concluído
 - Projeto Next.js 14 criado com TypeScript e App Router
@@ -48,16 +48,6 @@
 - Admin endpoints: GET /api/admin/users, PATCH /api/admin/users/:id
 - Middleware NextAuth protegendo /dashboard/* e /admin/*
 - GET /api/assets — lista todos os assets (pra selects do frontend)
-- Frontend completo:
-  - /login (NextAuth signIn)
-  - /register (POST /api/auth/register)
-  - /dashboard (lista portfolios + criar novo + resumo WAC)
-  - /dashboard/portfolio/:id (posições + transações CRUD + buy bands CRUD)
-  - /admin/users (lista users + editar role)
-- Layout com navbar (user info + logout) e sidebar (Dashboard + Admin)
-- SessionProvider configurado no root layout
-- Home (/) redireciona pra /dashboard
-- Build limpo + 7/7 testes passando
 - Sistema de snapshots diários:
   - Model PortfolioSnapshot (valueUsd, costBasisUsd, unrealizedPnl, unrealizedPct, positionsSnapshot JSON)
   - POST /api/portfolios/:id/snapshots — cria snapshot com posições atuais + preços mais recentes
@@ -66,12 +56,27 @@
   - `scripts/daily-snapshot.ts` — script standalone para gerar snapshots de todos os portfolios
   - `scripts/cron-snapshots.ts` — wrapper node-cron (00:00 UTC diário)
   - npm scripts: `npm run snapshot` e `npm run cron:snapshot`
-- Frontend histórico de portfolio:
-  - /dashboard/portfolio/:id/history — gráfico LineChart (recharts) com evolução de valor, custo e P&L
-  - Cards resumo (valor atual, custo base, P&L, P&L %)
-  - Tabela de snapshots com detalhes
-  - Botão "Criar Snapshot Agora"
-  - Link "Histórico" na página de detalhe do portfolio
+- **Frontend MVP completo com shadcn/ui + TanStack Query:**
+  - shadcn/ui configurado manualmente (CSS variables, tailwind-animate, Radix primitives)
+  - Componentes UI: Button, Card, Input, Label, Badge, Table, Tabs, Dialog, Select, Skeleton, Alert
+  - TanStack Query (React Query) como state manager global com QueryClientProvider
+  - /login: NextAuth signIn com Suspense boundary, card layout, validação client-side
+  - /register: POST /api/auth/register com validação de senha client-side (8+ chars, maiúscula, número)
+  - /dashboard: Header com valor total USD + P&L global + count portfolios, lista portfolios como cards com valor/P&L, dialog criar portfolio, TradingView widget embed (BTC/USDT com MAs 21/50/200)
+  - /dashboard/portfolio/:id: 4 tabs com Radix Tabs:
+    - Tab Posições: tabela Asset/Qty/Avg Cost/Current Price/Value/P&L USD/P&L %, cards resumo
+    - Tab Transações: tabela paginada, dialog form discriminated por type (BUY/SELL/SWAP/DEPOSIT/WITHDRAW/FEE), editar/deletar com confirmação
+    - Tab Buy Bands: tabela com progress bar, toggle executed, criar via dialog
+    - Tab Médias Móveis (novo): selector de asset, tabela com períodos 21/35/50/200/305/610/1200, distância USD e %, cores verde/vermelho, badge posição
+  - /dashboard/portfolio/:id/history: gráfico LineChart (recharts), cards resumo, snapshot table
+  - /admin/users: tabela com shadcn/ui, editar role via Select
+  - Layout responsivo: sidebar colapsável mobile, navbar com backdrop blur
+  - Loading states com Skeleton em todas as páginas
+  - Error handling em todas as mutations
+- **Backend Indicators Service (novo):**
+  - `src/lib/services/indicators.ts` — calculateSMA, getLatestPrice, getIndicators
+  - GET /api/indicators/:symbol?periods=21,50,200 — calcula SMA de cada período via PriceSnapshot histórico
+  - Response: {symbol, current, mas: [{period, value, distance, distancePct}]}
 
 ## 🚧 Em progresso
 - Nenhum
@@ -81,10 +86,10 @@
 
 ## 📋 Próximos passos
 1. Integração com API de preços externa (CoinGecko/Binance)
-2. Dashboard com resumo de todos os portfolios (total value, P&L agregado)
-3. Export/import de transações (CSV)
-4. Alertas de preço / notificações
-5. Dark mode
+2. Export/import de transações (CSV)
+3. Alertas de preço / notificações
+4. Dark mode toggle (CSS variables já configuradas)
+5. Testes E2E (Playwright ou Cypress)
 
 ## 🛠️ Comandos úteis
 ```bash
