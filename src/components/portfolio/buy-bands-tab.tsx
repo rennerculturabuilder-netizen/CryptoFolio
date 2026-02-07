@@ -10,8 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Trash2, Loader2, CheckCircle, Clock } from "lucide-react";
+import { Plus, Trash2, Loader2, CheckCircle, Clock, ExternalLink } from "lucide-react";
 import { formatUsd, formatQty } from "@/lib/utils";
+import { toast } from "sonner";
+import Link from "next/link";
 
 type Asset = { id: string; symbol: string; name: string };
 type BuyBand = {
@@ -38,20 +40,30 @@ export function BuyBandsTab({
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, executed }: { id: string; executed: boolean }) => {
-      await fetch(`/api/buy-bands/${id}`, {
+      const res = await fetch(`/api/buy-bands/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ executed }),
       });
+      if (!res.ok) throw new Error("Erro ao atualizar");
     },
-    onSuccess: () => onRefresh(),
+    onSuccess: (_, vars) => {
+      onRefresh();
+      toast.success(vars.executed ? "Marcada como executada" : "Marcada como pendente");
+    },
+    onError: () => toast.error("Erro ao atualizar status"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await fetch(`/api/buy-bands/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/buy-bands/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Erro ao deletar");
     },
-    onSuccess: () => onRefresh(),
+    onSuccess: () => {
+      onRefresh();
+      toast.success("Buy band deletada");
+    },
+    onError: () => toast.error("Erro ao deletar"),
   });
 
   const executedCount = buyBands.filter((b) => b.executed).length;
@@ -67,6 +79,13 @@ export function BuyBandsTab({
             </Badge>
           )}
         </div>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/buy-bands">
+            <Button variant="outline" size="sm">
+              <ExternalLink className="h-3.5 w-3.5 mr-1" />
+              Ver todas
+            </Button>
+          </Link>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
@@ -85,6 +104,7 @@ export function BuyBandsTab({
             />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Progress bar */}

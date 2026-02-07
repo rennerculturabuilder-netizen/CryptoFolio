@@ -4,48 +4,55 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 6%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+
+    --card: 222 47% 8%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+
+    --popover: 222 47% 8%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 217 33% 14%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 217 33% 17%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+
+    --border: 217 33% 16%;
+    --input: 217 33% 16%;
+    --ring: 199 89% 48%;
+    --radius: 0.75rem;
+
+    /* Chart colors */
+    --chart-green: 142 71% 45%;
+    --chart-red: 0 84% 60%;
+    --chart-blue: 199 89% 48%;
+    --chart-yellow: 45 93% 47%;
+    --chart-purple: 262 83% 58%;
+    --chart-orange: 24 95% 53%;
+    --chart-cyan: 187 92% 44%;
+    --chart-pink: 330 81% 60%;
+
+    /* Surfaces */
+    --surface-0: 222 47% 6%;
+    --surface-1: 222 47% 8%;
+    --surface-2: 217 33% 12%;
+    --surface-3: 217 33% 16%;
+
+    /* Glow */
+    --glow-green: 142 71% 45%;
+    --glow-red: 0 84% 60%;
+    --glow-blue: 199 89% 48%;
   }
 }
 
@@ -55,6 +62,82 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: "Inter", "Geist Sans", system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50;
+  }
+  .glass-strong {
+    @apply bg-card/80 backdrop-blur-2xl border border-border/60;
+  }
+  .glow-green {
+    box-shadow: 0 0 20px hsl(var(--glow-green) / 0.15),
+                0 0 40px hsl(var(--glow-green) / 0.05);
+  }
+  .glow-red {
+    box-shadow: 0 0 20px hsl(var(--glow-red) / 0.15),
+                0 0 40px hsl(var(--glow-red) / 0.05);
+  }
+  .glow-blue {
+    box-shadow: 0 0 20px hsl(var(--glow-blue) / 0.15),
+                0 0 40px hsl(var(--glow-blue) / 0.05);
+  }
+  .text-gain {
+    @apply text-emerald-400;
+  }
+  .text-loss {
+    @apply text-red-400;
+  }
+  .bg-gain {
+    @apply bg-emerald-400/10;
+  }
+  .bg-loss {
+    @apply bg-red-400/10;
+  }
+
+  /* Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  /* Mobile table card view */
+  @media (max-width: 639px) {
+    .mobile-card-table thead {
+      display: none;
+    }
+    .mobile-card-table tbody tr {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 1rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid hsl(var(--border) / 0.2);
+    }
+    .mobile-card-table tbody td {
+      padding: 0;
+      border: none;
+    }
+  }
+
+  /* Fade in animation */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 }

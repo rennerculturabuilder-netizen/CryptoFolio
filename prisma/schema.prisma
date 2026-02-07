@@ -127,8 +127,26 @@ model BuyBand {
   portfolio   Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  alerts      BuyBandAlert[]
 
   @@unique([portfolioId, assetId, order])
   @@index([assetId])
   @@index([portfolioId])
+}
+
+model BuyBandAlert {
+  id          String   @id @default(cuid())
+  buyBandId   String
+  buyBand     BuyBand  @relation(fields: [buyBandId], references: [id], onDelete: Cascade)
+  symbol      String
+  targetPrice Decimal  @db.Decimal(18, 8)
+  currentPrice Decimal @db.Decimal(18, 8)
+  message     String
+  read        Boolean  @default(false)
+  notified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([buyBandId])
+  @@index([read])
+  @@index([createdAt])
 }

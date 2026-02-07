@@ -125,7 +125,7 @@ export default function PortfolioDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-slide-up">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -146,11 +146,11 @@ export default function PortfolioDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="positions">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="positions">Posições</TabsTrigger>
           <TabsTrigger value="transactions">Transações</TabsTrigger>
           <TabsTrigger value="buyBands">Buy Bands</TabsTrigger>
-          <TabsTrigger value="mas">Médias Móveis</TabsTrigger>
+          <TabsTrigger value="mas">Médias</TabsTrigger>
         </TabsList>
 
         <TabsContent value="positions">
