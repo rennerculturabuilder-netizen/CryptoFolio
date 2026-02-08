@@ -7,6 +7,7 @@
  * Executar: npx tsx scripts/check-buy-bands.ts
  */
 
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import Decimal from "decimal.js";
 
