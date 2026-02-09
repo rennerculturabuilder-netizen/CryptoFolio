@@ -1,7 +1,7 @@
 # Crypto Portfolio — Progresso
 
 ## Última atualização
-08/02/2026 12:00
+08/02/2026 23:40
 
 ## ✅ Concluído
 - Projeto Next.js 14 criado com TypeScript e App Router
@@ -252,11 +252,22 @@
 - **Documentação:**
   - `README.md` — completo com: stack, features, setup guide, env vars, scripts, API reference (22+ endpoints), arquitetura, deploy, criptos suportadas
 
+- **Deploy Vercel + Neon (Produção):**
+  - Projeto Neon criado (`dawn-butterfly-39115922`, região `aws-us-west-2`)
+  - Schema Prisma sincronizado no Neon via `prisma db push`
+  - Variáveis de ambiente configuradas na Vercel via CLI (`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`)
+  - Build passando na Vercel (21 páginas estáticas + 28 API routes dinâmicas)
+  - Fix: `vercel.json` com `{"framework": "nextjs"}` para resolver erro "No Output Directory"
+  - Fix: `prisma generate` adicionado ao build script para evitar erro de Prisma Client no Vercel
+  - Fix: `output: "standalone"` condicional (só via `STANDALONE=true`, não ativa na Vercel)
+  - **App live em: https://crypto-folio-rho.vercel.app**
+
 ## 🚧 Em progresso
 - Nenhum
 
 ## ⚠️ Problemas encontrados
 - `prisma migrate dev` não roda em terminal não-interativo (Claude Code) — usar direto no terminal ou `db push`
+- Vercel: `output: "standalone"` causa erro "No Output Directory named 'public'" — resolvido com flag condicional
 
 ## 📋 Próximos passos
 1. ~~Export/import de transações (CSV)~~ ✅
