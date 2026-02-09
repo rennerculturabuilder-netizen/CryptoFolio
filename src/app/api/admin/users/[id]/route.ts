@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/guards";
-import { apiSuccess, apiError, handleApiError } from "@/lib/api-response";
+import { apiSuccess, handleApiError } from "@/lib/api-response";
 import { z } from "zod";
 
 const updateUserSchema = z.object({

@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { formatUsd, formatPct, formatQty, formatPrice } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";

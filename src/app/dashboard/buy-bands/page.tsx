@@ -43,7 +43,6 @@ import {
   Clock,
   Filter,
   X,
-  TrendingDown,
 } from "lucide-react";
 import { formatPrice, formatQty } from "@/lib/utils";
 import { toast } from "sonner";

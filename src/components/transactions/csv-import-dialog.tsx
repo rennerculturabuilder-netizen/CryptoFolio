@@ -19,7 +19,6 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle2,
-  X,
   Loader2,
 } from "lucide-react";
 import { parseCSV, type ImportValidationResult } from "@/lib/csv/transactions-csv";
