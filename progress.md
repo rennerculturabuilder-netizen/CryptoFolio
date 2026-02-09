@@ -1,7 +1,7 @@
 # Crypto Portfolio — Progresso
 
 ## Última atualização
-06/02/2026 23:30
+08/02/2026 12:00
 
 ## ✅ Concluído
 - Projeto Next.js 14 criado com TypeScript e App Router
@@ -212,6 +212,46 @@
     - `animate-fade-in` CSS utility
     - Transições suaves em hover de table rows
 
+- **Padronização de API Routes com helpers centralizados:**
+  - `src/lib/api-response.ts` — helpers `apiSuccess`, `apiError`, `handleApiError` (auto-map Unauthorized/Forbidden/NotFound)
+  - `src/lib/guards.ts` — guards `requireAuth`, `requireAdmin`, `requirePortfolioAccess`
+  - Routes migradas para os helpers:
+    - `src/app/api/portfolios/[id]/route.ts` (GET, PATCH, DELETE)
+    - `src/app/api/portfolios/[id]/transactions/route.ts` (GET, POST) — removida função local `getAssetBalance`, usa import de `@/lib/portfolio/balance`
+    - `src/app/api/transactions/[id]/route.ts` (PATCH) — removida função local `getAssetBalance`, usa import de `@/lib/portfolio/balance`
+    - `src/app/api/portfolios/[id]/wac/route.ts` (GET)
+    - `src/app/api/admin/users/route.ts` (GET) — usa `requireAdmin()`
+    - `src/app/api/admin/users/[id]/route.ts` (PATCH) — usa `requireAdmin()`
+  - Removidos imports não utilizados (`NextResponse`, `getServerSession`, `authOptions`) de todas as routes migradas
+
+- **Frontend Polish Final:**
+  - `src/components/error-boundary.tsx` — Error boundary com fallback UI (ícone, mensagem, botão retry)
+  - `src/components/ui/spinner.tsx` — Spinner + PageLoader components
+  - ErrorBoundary adicionado em `dashboard/layout.tsx` e `admin/layout.tsx`
+  - CSS Polish (`globals.css`):
+    - `.stagger-children` — animação escalonada de children (50ms delay incremental)
+    - `.skeleton-shimmer` — shimmer animado para loading states
+    - `.tabular-nums` — números tabulares para tabelas
+    - `.focus-ring` — focus visible ring padronizado
+    - `.hover-lift` — efeito lift no hover de cards
+  - Hero Cards: `stagger-children` + `hover-lift` em todos os 3 cards
+  - Asset Table: `tabular-nums` + shimmer skeleton loading melhorado
+  - Metadata melhorada: title template, keywords, description
+
+- **Backend Optimization:**
+  - `src/lib/portfolio/balance.ts` — utility `getAssetBalance` extraída e compartilhada
+  - `next.config.mjs` — standalone output, `poweredByHeader: false`, security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection), imagens CoinGecko
+
+- **DevOps / Deploy:**
+  - `Dockerfile` — multi-stage build (deps → builder → runner) com user não-root, standalone output
+  - `docker-compose.prod.yml` — PostgreSQL + App com healthcheck, env vars parametrizáveis
+  - `.dockerignore` — exclui node_modules, .next, .git, .env
+  - `.env.example` — template completo de variáveis de ambiente
+  - `.github/workflows/ci.yml` — GitHub Actions CI (lint → test com PostgreSQL → build)
+
+- **Documentação:**
+  - `README.md` — completo com: stack, features, setup guide, env vars, scripts, API reference (22+ endpoints), arquitetura, deploy, criptos suportadas
+
 ## 🚧 Em progresso
 - Nenhum
 
@@ -222,9 +262,11 @@
 1. ~~Export/import de transações (CSV)~~ ✅
 2. ~~Alertas de preço / notificações~~ ✅
 3. ~~Admin panel + responsividade + polish~~ ✅
-4. Dark mode toggle (CSS variables já configuradas — atualmente dark-only)
-5. Testes E2E (Playwright ou Cypress)
-6. Gráfico de evolução patrimonial (LineChart com snapshots)
+4. ~~Production polish (UX, backend, DevOps, docs)~~ ✅
+5. Dark mode toggle (CSS variables já configuradas — atualmente dark-only)
+6. Testes E2E (Playwright ou Cypress)
+7. Gráfico de evolução patrimonial (LineChart com snapshots)
+8. Migrar routes restantes para helpers padronizados (prices, buy-bands, indicators, snapshots, etc.)
 
 ## 🛠️ Comandos úteis
 ```bash
@@ -254,4 +296,7 @@ npm run cron:snapshot  # cron node que roda snapshot todo dia 00:00 UTC
 # Buy Bands
 npm run check:bands    # verificar preços e criar alertas (uma vez)
 npm run cron:bands     # cron node que verifica a cada 5 minutos
+
+# Docker (produção)
+docker compose -f docker-compose.prod.yml up -d --build
 ```

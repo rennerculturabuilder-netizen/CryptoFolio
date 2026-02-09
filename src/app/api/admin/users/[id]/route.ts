@@ -1,6 +1,6 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/guards";
+import { apiSuccess, apiError, handleApiError } from "@/lib/api-response";
 import { z } from "zod";
 
 const updateUserSchema = z.object({
@@ -13,30 +13,26 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
+  try {
+    await requireAdmin();
 
-  if (!session?.user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const body = await req.json();
+    const validated = updateUserSchema.parse(body);
+
+    const user = await prisma.user.update({
+      where: { id: params.id },
+      data: validated,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        updatedAt: true,
+      },
+    });
+
+    return apiSuccess(user);
+  } catch (error) {
+    return handleApiError(error, "PATCH /api/admin/users/:id");
   }
-
-  if (session.user.role !== "admin") {
-    return Response.json({ error: "Forbidden: Admin only" }, { status: 403 });
-  }
-
-  const body = await req.json();
-  const validated = updateUserSchema.parse(body);
-
-  const user = await prisma.user.update({
-    where: { id: params.id },
-    data: validated,
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      updatedAt: true,
-    },
-  });
-
-  return Response.json(user);
 }

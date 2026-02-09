@@ -15,8 +15,12 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Crypto Portfolio",
-  description: "Gerenciador de portfolio de criptomoedas",
+  title: {
+    default: "CryptoFolio",
+    template: "%s | CryptoFolio",
+  },
+  description: "Dashboard de gerenciamento de portfolio de criptomoedas",
+  keywords: ["crypto", "portfolio", "bitcoin", "ethereum", "dashboard"],
 };
 
 export default function RootLayout({

@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requirePortfolioAccess } from "@/lib/guards";
+import { requireAuth, requirePortfolioAccess } from "@/lib/guards";
+import { apiSuccess, apiError, handleApiError } from "@/lib/api-response";
 import { transactionSchema } from "@/lib/validations/transaction";
+import { getAssetBalance } from "@/lib/portfolio/balance";
 import { Decimal } from "@prisma/client/runtime/library";
 
 type Params = { params: { id: string } };
@@ -13,10 +12,7 @@ const assetSelect = { id: true, symbol: true, name: true };
 // GET /api/portfolios/:id/transactions
 export async function GET(_request: Request, { params }: Params) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-    }
+    const session = await requireAuth();
 
     await requirePortfolioAccess(
       session.user.id,
@@ -34,31 +30,16 @@ export async function GET(_request: Request, { params }: Params) {
       orderBy: { timestamp: "desc" },
     });
 
-    return NextResponse.json(transactions);
+    return apiSuccess(transactions);
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Portfolio not found") {
-        return NextResponse.json({ error: error.message }, { status: 404 });
-      }
-      if (error.message === "Forbidden") {
-        return NextResponse.json({ error: error.message }, { status: 403 });
-      }
-    }
-    console.error("Erro ao listar transações:", error);
-    return NextResponse.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 }
-    );
+    return handleApiError(error, "GET /api/portfolios/:id/transactions");
   }
 }
 
 // POST /api/portfolios/:id/transactions
 export async function POST(request: Request, { params }: Params) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-    }
+    const session = await requireAuth();
 
     await requirePortfolioAccess(
       session.user.id,
@@ -73,10 +54,7 @@ export async function POST(request: Request, { params }: Params) {
     });
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: validation.error.issues[0].message },
-        { status: 400 }
-      );
+      return apiError(validation.error.issues[0].message);
     }
 
     const data = validation.data;
@@ -94,10 +72,7 @@ export async function POST(request: Request, { params }: Params) {
     if (assets.length !== assetIds.size) {
       const found = new Set(assets.map((a) => a.id));
       const missing = Array.from(assetIds).filter((id) => !found.has(id));
-      return NextResponse.json(
-        { error: `Asset(s) não encontrado(s): ${missing.join(", ")}` },
-        { status: 404 }
-      );
+      return apiError(`Asset(s) não encontrado(s): ${missing.join(", ")}`, 404);
     }
 
     // Verificar saldo para SELL e WITHDRAW
@@ -106,11 +81,8 @@ export async function POST(request: Request, { params }: Params) {
       const qty = new Decimal(data.baseQty);
       if (balance.lessThan(qty)) {
         const asset = assets.find((a) => a.id === data.baseAssetId);
-        return NextResponse.json(
-          {
-            error: `Saldo insuficiente. Disponível: ${balance.toString()} ${asset?.symbol ?? data.baseAssetId}`,
-          },
-          { status: 400 }
+        return apiError(
+          `Saldo insuficiente. Disponível: ${balance.toString()} ${asset?.symbol ?? data.baseAssetId}`
         );
       }
     }
@@ -160,80 +132,8 @@ export async function POST(request: Request, { params }: Params) {
       },
     });
 
-    return NextResponse.json(transaction, { status: 201 });
+    return apiSuccess(transaction, 201);
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Portfolio not found") {
-        return NextResponse.json({ error: error.message }, { status: 404 });
-      }
-      if (error.message === "Forbidden") {
-        return NextResponse.json({ error: error.message }, { status: 403 });
-      }
-    }
-    console.error("Erro ao criar transação:", error);
-    return NextResponse.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 }
-    );
+    return handleApiError(error, "POST /api/portfolios/:id/transactions");
   }
-}
-
-// Calcula saldo de um asset em um portfolio
-async function getAssetBalance(
-  portfolioId: string,
-  assetId: string
-): Promise<Decimal> {
-  const txs = await prisma.transaction.findMany({
-    where: { portfolioId },
-    orderBy: { timestamp: "asc" },
-  });
-
-  let balance = new Decimal(0);
-
-  for (const tx of txs) {
-    // BUY/DEPOSIT: base entra
-    if (
-      (tx.type === "BUY" || tx.type === "DEPOSIT") &&
-      tx.baseAssetId === assetId &&
-      tx.baseQty
-    ) {
-      balance = balance.plus(tx.baseQty);
-    }
-
-    // SELL/WITHDRAW: base sai
-    if (
-      (tx.type === "SELL" || tx.type === "WITHDRAW") &&
-      tx.baseAssetId === assetId &&
-      tx.baseQty
-    ) {
-      balance = balance.minus(tx.baseQty);
-    }
-
-    // SWAP: base sai, quote entra
-    if (tx.type === "SWAP") {
-      if (tx.baseAssetId === assetId && tx.baseQty) {
-        balance = balance.minus(tx.baseQty);
-      }
-      if (tx.quoteAssetId === assetId && tx.quoteQty) {
-        balance = balance.plus(tx.quoteQty);
-      }
-    }
-
-    // BUY: quote sai (gasta fiat/stable)
-    if (tx.type === "BUY" && tx.quoteAssetId === assetId && tx.quoteQty) {
-      balance = balance.minus(tx.quoteQty);
-    }
-
-    // SELL: quote entra (recebe fiat/stable)
-    if (tx.type === "SELL" && tx.quoteAssetId === assetId && tx.quoteQty) {
-      balance = balance.plus(tx.quoteQty);
-    }
-
-    // Fee reduz saldo
-    if (tx.feeAssetId === assetId && tx.feeQty) {
-      balance = balance.minus(tx.feeQty);
-    }
-  }
-
-  return balance;
 }

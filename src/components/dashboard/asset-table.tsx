@@ -102,9 +102,18 @@ export function buildAssetRows(
 export function AssetTable({ assets, isLoading }: AssetTableProps) {
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-2">
         {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-14 w-full" />
+          <div key={i} className="flex items-center gap-4 p-3">
+            <div className="h-9 w-9 rounded-full skeleton-shimmer" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-24 rounded skeleton-shimmer" />
+              <div className="h-3 w-16 rounded skeleton-shimmer" />
+            </div>
+            <div className="h-4 w-20 rounded skeleton-shimmer" />
+            <div className="h-4 w-20 rounded skeleton-shimmer hidden sm:block" />
+            <div className="h-4 w-16 rounded skeleton-shimmer hidden sm:block" />
+          </div>
         ))}
       </div>
     );
@@ -121,7 +130,7 @@ export function AssetTable({ assets, isLoading }: AssetTableProps) {
 
   return (
     <div className="overflow-x-auto scrollbar-thin">
-      <Table>
+      <Table className="tabular-nums">
         <TableHeader>
           <TableRow className="border-border/30 hover:bg-transparent">
             <TableHead className="text-muted-foreground font-medium">Ativo</TableHead>

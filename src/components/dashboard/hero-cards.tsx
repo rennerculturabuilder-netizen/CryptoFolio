@@ -63,9 +63,9 @@ export function HeroCards({
   const sparkColor = isPositive ? "#34d399" : "#f87171";
 
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 stagger-children">
       {/* Balance Card */}
-      <Card className="glass border-border/30 overflow-hidden">
+      <Card className="glass border-border/30 overflow-hidden hover-lift">
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export function HeroCards({
       </Card>
 
       {/* Valuation Card */}
-      <Card className="glass border-border/30 overflow-hidden">
+      <Card className="glass border-border/30 overflow-hidden hover-lift">
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export function HeroCards({
 
       {/* Gain Card */}
       <Card
-        className={`glass border-border/30 overflow-hidden ${
+        className={`glass border-border/30 overflow-hidden hover-lift ${
           isPositive ? "glow-green" : "glow-red"
         }`}
       >

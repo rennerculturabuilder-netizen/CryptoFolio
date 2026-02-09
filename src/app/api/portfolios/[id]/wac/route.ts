@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requirePortfolioAccess } from "@/lib/guards";
+import { requireAuth, requirePortfolioAccess } from "@/lib/guards";
+import { apiSuccess, handleApiError } from "@/lib/api-response";
 import { calcPositions } from "@/lib/portfolio/calc";
 
 type Params = { params: { id: string } };
@@ -10,10 +8,7 @@ type Params = { params: { id: string } };
 // GET /api/portfolios/:id/wac
 export async function GET(_request: Request, { params }: Params) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-    }
+    const session = await requireAuth();
 
     await requirePortfolioAccess(
       session.user.id,
@@ -43,20 +38,8 @@ export async function GET(_request: Request, { params }: Params) {
       };
     });
 
-    return NextResponse.json(result);
+    return apiSuccess(result);
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Portfolio not found") {
-        return NextResponse.json({ error: error.message }, { status: 404 });
-      }
-      if (error.message === "Forbidden") {
-        return NextResponse.json({ error: error.message }, { status: 403 });
-      }
-    }
-    console.error("Erro ao calcular WAC:", error);
-    return NextResponse.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 }
-    );
+    return handleApiError(error, "GET /api/portfolios/:id/wac");
   }
 }
