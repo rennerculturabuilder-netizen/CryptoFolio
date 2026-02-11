@@ -142,85 +142,79 @@ export default function DashboardPage() {
         isLoading={isLoading}
       />
 
-      {/* Grid: Tabela + Sidebar */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Tabela de Ativos (2/3) */}
-        <Card className="lg:col-span-2 glass border-border/30">
+      {/* RSI + Fear & Greed + Distribuição (horizontal) */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* RSI Gauge */}
+        <Card className="glass border-border/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold flex items-center justify-between">
-              <span>Ativos</span>
-              {!isLoading && (
-                <span className="text-sm text-muted-foreground font-normal">
-                  {assetRows.length} ativo{assetRows.length !== 1 ? "s" : ""}
-                </span>
-              )}
+            <CardTitle className="text-lg font-semibold">
+              RSI Index
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <AssetTable assets={assetRows} isLoading={isLoading} />
+          <CardContent className="pt-0 flex justify-center">
+            <RsiGauge
+              value={coingeckoData?.rsi?.rsi ?? null}
+              symbol={primarySymbol}
+              isLoading={pricesLoading}
+            />
           </CardContent>
         </Card>
 
-        {/* Sidebar direita (1/3) */}
-        <div className="space-y-6">
-          {/* RSI + Fear & Greed lado a lado */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* RSI Gauge */}
-            <Card className="glass border-border/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">
-                  RSI Index
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 flex justify-center">
-                <RsiGauge
-                  value={coingeckoData?.rsi?.rsi ?? null}
-                  symbol={primarySymbol}
-                  isLoading={pricesLoading}
-                />
-              </CardContent>
-            </Card>
+        {/* Fear & Greed Index */}
+        <Card className="glass border-border/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold">
+              Fear &amp; Greed Index
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 flex justify-center">
+            <FearGreedGauge
+              value={coingeckoData?.fearGreed?.value ?? null}
+              isLoading={pricesLoading}
+            />
+          </CardContent>
+        </Card>
 
-            {/* Fear & Greed Index */}
-            <Card className="glass border-border/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold">
-                  Fear &amp; Greed Index
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 flex justify-center">
-                <FearGreedGauge
-                  value={coingeckoData?.fearGreed?.value ?? null}
-                  isLoading={pricesLoading}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Distribuição */}
-          <Card className="glass border-border/30">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">
-                Distribuição
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-full rounded-full" />
-                  <div className="flex gap-3">
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
+        {/* Distribuição */}
+        <Card className="glass border-border/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold">
+              Distribuição
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full rounded-full" />
+                <div className="flex gap-3">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
                 </div>
-              ) : (
-                <DistributionChart assets={assetRows} />
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </div>
+            ) : (
+              <DistributionChart assets={assetRows} />
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Tabela de Ativos (full width) */}
+      <Card className="glass border-border/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold flex items-center justify-between">
+            <span>Ativos</span>
+            {!isLoading && (
+              <span className="text-sm text-muted-foreground font-normal">
+                {assetRows.length} ativo{assetRows.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <AssetTable assets={assetRows} isLoading={isLoading} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
