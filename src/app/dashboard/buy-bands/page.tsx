@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 import { formatPrice, formatQty } from "@/lib/utils";
 import { toast } from "sonner";
-import { DcaStrategyPanel } from "@/components/dca/dca-strategy-panel";
+import { DcaStrategyPanelV2 } from "@/components/dca/dca-strategy-panel-v2";
 
 type Asset = { id: string; symbol: string; name: string };
 type Portfolio = { id: string; name: string };
@@ -291,7 +291,7 @@ export default function BuyBandsPage() {
 
       {/* DCA Adaptativo */}
       {selectedId && (
-        <DcaStrategyPanel
+        <DcaStrategyPanelV2
           portfolioId={selectedId}
         />
       )}
