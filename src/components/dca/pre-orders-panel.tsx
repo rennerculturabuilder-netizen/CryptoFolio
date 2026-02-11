@@ -140,7 +140,7 @@ export function PreOrdersPanel({
 
       toast.success("Pré-ordem removida!");
       onUpdate();
-    } catch (error) {
+    } catch {
       toast.error("Erro ao remover pré-ordem");
     }
   }
