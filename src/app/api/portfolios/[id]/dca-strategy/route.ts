@@ -66,34 +66,35 @@ async function getCryptoPrice(symbol: string): Promise<number> {
 }
 
 async function getPortfolioBalance(portfolioId: string) {
-  // Calcular saldo em USD/USDT/USDC
-  const stablecoins = ['USD', 'USDT', 'USDC'];
+  // Importar calcPositions
+  const { calcPositions } = await import('@/lib/portfolio/calc');
   
-  const transactions = await prisma.transaction.findMany({
-    where: { portfolioId },
-    include: {
-      baseAsset: true,
-      quoteAsset: true,
-    },
+  // Calcular todas as posições
+  const positions = await calcPositions(portfolioId);
+  
+  // Buscar assets das posições
+  const assetIds = positions.map((p) => p.assetId);
+  const assets = await prisma.asset.findMany({
+    where: { id: { in: assetIds } },
+    select: { id: true, symbol: true },
   });
-
+  
+  const assetMap = new Map(assets.map((a) => [a.id, a.symbol]));
+  
+  // Stablecoins que contam como capital disponível
+  const stablecoins = ['USD', 'USDT', 'USDC', 'BUSD', 'DAI', 'USDD'];
+  
+  let totalUsd = 0;
   const balances: Record<string, number> = {};
-
-  for (const tx of transactions) {
-    // Simplificação: apenas DEPOSIT e WITHDRAW de stables
-    if (tx.baseAsset && stablecoins.includes(tx.baseAsset.symbol)) {
-      const symbol = tx.baseAsset.symbol;
-      if (!balances[symbol]) balances[symbol] = 0;
-
-      if (tx.type === 'DEPOSIT') {
-        balances[symbol] += parseFloat(tx.baseQty?.toString() || '0');
-      } else if (tx.type === 'WITHDRAW') {
-        balances[symbol] -= parseFloat(tx.baseQty?.toString() || '0');
-      }
+  
+  for (const pos of positions) {
+    const symbol = assetMap.get(pos.assetId);
+    if (symbol && stablecoins.includes(symbol)) {
+      const qty = parseFloat(pos.qty.toString());
+      balances[symbol] = qty;
+      totalUsd += qty; // Stablecoins = 1:1 USD
     }
   }
-
-  const totalUsd = Object.values(balances).reduce((sum, val) => sum + val, 0);
 
   return { balances, totalUsd };
 }
