@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock, ChevronDown, ChevronUp, Plus, Trash2, Target, Calendar, DollarSign } from "lucide-react";
+import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock, ChevronDown, ChevronUp, Plus, Trash2, Target, Calendar } from "lucide-react";
 import { formatPrice, formatUsd } from "@/lib/utils";
 import { toast } from "sonner";
 
