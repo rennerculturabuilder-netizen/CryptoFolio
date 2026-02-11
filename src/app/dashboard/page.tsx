@@ -27,8 +27,12 @@ type CoingeckoResponse = {
   fearGreed: { value: number; classification: string } | null;
 };
 
-async function fetchWac(portfolioId: string): Promise<Position[]> {
-  const res = await fetch(`/api/portfolios/${portfolioId}/wac`);
+async function fetchWac(portfolioId: string | null): Promise<Position[]> {
+  if (!portfolioId) return [];
+  const endpoint = portfolioId === "ALL" 
+    ? "/api/portfolios/all/wac"
+    : `/api/portfolios/${portfolioId}/wac`;
+  const res = await fetch(endpoint);
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? data : [];
@@ -115,10 +119,16 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          {selected ? selected.name : "Dashboard"}
+          {selectedId === "ALL" 
+            ? "Todas as Carteiras" 
+            : selected 
+            ? selected.name 
+            : "Dashboard"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Visão geral do seu portfolio
+          {selectedId === "ALL"
+            ? "Visão consolidada de todos os seus portfolios"
+            : "Visão geral do seu portfolio"}
         </p>
       </div>
 

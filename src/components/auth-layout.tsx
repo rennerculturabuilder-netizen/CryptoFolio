@@ -139,18 +139,6 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
       icon: ArrowLeftRight,
       active: pathname === "/dashboard/transactions",
     },
-    ...(selectedId
-      ? [
-          {
-            href: `/dashboard/portfolio/${selectedId}`,
-            label: "Portfolio",
-            icon: Wallet,
-            active:
-              pathname.startsWith("/dashboard/portfolio/") &&
-              !pathname.includes("/transactions"),
-          },
-        ]
-      : []),
     {
       href: "/dashboard/buy-bands",
       label: "DCA",
@@ -221,6 +209,11 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="ALL">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">Todas as Carteiras</span>
+                    </div>
+                  </SelectItem>
                   {portfolios.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       <div className="flex items-center gap-2">
@@ -427,9 +420,11 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           {/* Sidebar footer */}
           <div className="absolute bottom-4 left-4 right-4">
             <div className="rounded-lg bg-secondary/30 p-3 border border-border/20">
-              <p className="text-xs text-muted-foreground">Portfolio ativo</p>
+              <p className="text-xs text-muted-foreground">Visualização</p>
               <p className="text-sm font-medium truncate mt-0.5">
-                {selected?.name || "Nenhum selecionado"}
+                {selectedId === "ALL" 
+                  ? "Todas as Carteiras" 
+                  : selected?.name || "Nenhum selecionado"}
               </p>
             </div>
           </div>

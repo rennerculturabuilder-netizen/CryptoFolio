@@ -57,13 +57,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated || isLoading) return;
     if (portfolios.length > 0 && !selectedId) {
-      setSelectedIdState(portfolios[0].id);
-      localStorage.setItem(STORAGE_KEY, portfolios[0].id);
+      setSelectedIdState("ALL");
+      localStorage.setItem(STORAGE_KEY, "ALL");
     }
-    // Se o selecionado não existe mais, limpar
-    if (selectedId && portfolios.length > 0 && !portfolios.find((p) => p.id === selectedId)) {
-      setSelectedIdState(portfolios[0].id);
-      localStorage.setItem(STORAGE_KEY, portfolios[0].id);
+    // Se o selecionado não existe mais (e não é "ALL"), resetar para "ALL"
+    if (selectedId && selectedId !== "ALL" && portfolios.length > 0 && !portfolios.find((p) => p.id === selectedId)) {
+      setSelectedIdState("ALL");
+      localStorage.setItem(STORAGE_KEY, "ALL");
     }
   }, [portfolios, selectedId, hydrated, isLoading]);
 
