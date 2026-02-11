@@ -278,9 +278,6 @@ export default function BuyBandsPage() {
       {selectedId && (
         <DcaStrategyPanel
           portfolioId={selectedId}
-          dcaAsset={dcaAsset}
-          onAssetChange={setDcaAsset}
-          availableAssets={dcaAssets.length > 0 ? dcaAssets : ["BTC"]}
         />
       )}
 
