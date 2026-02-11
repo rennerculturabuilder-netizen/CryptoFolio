@@ -163,6 +163,40 @@ export default function DashboardPage() {
 
         {/* Sidebar direita (1/3) */}
         <div className="space-y-6">
+          {/* RSI + Fear & Greed lado a lado */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* RSI Gauge */}
+            <Card className="glass border-border/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold">
+                  RSI Index
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 flex justify-center">
+                <RsiGauge
+                  value={coingeckoData?.rsi?.rsi ?? null}
+                  symbol={primarySymbol}
+                  isLoading={pricesLoading}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Fear & Greed Index */}
+            <Card className="glass border-border/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold">
+                  Fear &amp; Greed Index
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 flex justify-center">
+                <FearGreedGauge
+                  value={coingeckoData?.fearGreed?.value ?? null}
+                  isLoading={pricesLoading}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Distribuição */}
           <Card className="glass border-border/30">
             <CardHeader className="pb-3">
@@ -183,37 +217,6 @@ export default function DashboardPage() {
               ) : (
                 <DistributionChart assets={assetRows} />
               )}
-            </CardContent>
-          </Card>
-
-          {/* RSI Gauge */}
-          <Card className="glass border-border/30">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">
-                RSI Index
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 flex justify-center">
-              <RsiGauge
-                value={coingeckoData?.rsi?.rsi ?? null}
-                symbol={primarySymbol}
-                isLoading={pricesLoading}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Fear & Greed Index */}
-          <Card className="glass border-border/30">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">
-                Fear &amp; Greed Index
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 flex justify-center">
-              <FearGreedGauge
-                value={coingeckoData?.fearGreed?.value ?? null}
-                isLoading={pricesLoading}
-              />
             </CardContent>
           </Card>
         </div>
