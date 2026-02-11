@@ -281,7 +281,7 @@ export function DcaStrategyPanel({ portfolioId }: { portfolioId: string }) {
                 zonas de preço são fixas, mas a alocação se adapta automaticamente.
               </p>
               <p>
-                Quando o preço ultrapassa uma zona (zona "pulada"), o capital é
+                Quando o preço ultrapassa uma zona (zona &quot;pulada&quot;), o capital é
                 redistribuído proporcionalmente nas zonas restantes.
               </p>
               <p>

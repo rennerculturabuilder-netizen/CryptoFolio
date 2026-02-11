@@ -202,14 +202,13 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const portfolioId = params.id;
     const { asset } = await req.json();
 
     // Recalcular estratégia (mesmo código do GET)
     // Aqui você pode adicionar lógica para salvar as zonas calculadas no banco
     // Por agora, apenas retorna o cálculo
 
-    return NextResponse.json({ message: 'Strategy recalculated', asset });
+    return NextResponse.json({ message: 'Strategy recalculated', asset, portfolioId: params.id });
   } catch (error) {
     console.error('Error recalculating DCA strategy:', error);
     return NextResponse.json(
