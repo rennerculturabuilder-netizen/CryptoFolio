@@ -175,6 +175,27 @@ export async function GET(
       };
     });
 
+    // Buscar pré-ordens ativas do portfolio + asset
+    const preOrders = await prisma.preOrder.findMany({
+      where: {
+        portfolioId,
+        assetSymbol: asset,
+        active: true,
+      },
+      orderBy: {
+        zoneOrder: 'asc',
+      },
+    });
+
+    const preOrdersFormatted = preOrders.map((po) => ({
+      id: po.id,
+      zoneOrder: po.zoneOrder,
+      zoneLabel: zonasFixas.find((z) => z.order === po.zoneOrder)?.label || `Zona ${po.zoneOrder}`,
+      targetPrice: parseFloat(po.targetPrice.toString()),
+      value: parseFloat(po.value.toString()),
+      active: po.active,
+    }));
+
     return NextResponse.json({
       portfolioId,
       asset,
@@ -183,6 +204,7 @@ export async function GET(
       zonasAtivas: zonasAtivas.length,
       zonasPuladas: zonasPuladas.length,
       zonas: zonasCalculadas,
+      preOrders: preOrdersFormatted,
     });
   } catch (error) {
     console.error('Error calculating DCA strategy:', error);

@@ -136,21 +136,41 @@ model BuyBand {
 }
 
 model DcaZone {
-  id             String   @id @default(cuid())
-  priceMin       Decimal  @db.Decimal(18, 8)
-  priceMax       Decimal  @db.Decimal(18, 8)
-  percentualBase Decimal  @db.Decimal(5, 2)
+  id             String     @id @default(cuid())
+  priceMin       Decimal    @db.Decimal(18, 8)
+  priceMax       Decimal    @db.Decimal(18, 8)
+  percentualBase Decimal    @db.Decimal(5, 2)
   label          String?
-  order          Int      @default(1)
-  executed       Boolean  @default(false)
+  order          Int        @default(1)
+  executed       Boolean    @default(false)
   assetSymbol    String
   portfolioId    String
-  portfolio      Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  portfolio      Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  preOrders      PreOrder[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@unique([portfolioId, assetSymbol, order])
   @@index([portfolioId])
+}
+
+model PreOrder {
+  id          String   @id @default(cuid())
+  targetPrice Decimal  @db.Decimal(18, 8)
+  value       Decimal  @db.Decimal(18, 8)
+  active      Boolean  @default(true)
+  executed    Boolean  @default(false)
+  zoneOrder   Int
+  assetSymbol String
+  portfolioId String
+  dcaZone     DcaZone? @relation(fields: [dcaZoneId], references: [id], onDelete: Cascade)
+  dcaZoneId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([portfolioId])
+  @@index([assetSymbol])
+  @@index([active])
 }
 
 model BuyBandAlert {
