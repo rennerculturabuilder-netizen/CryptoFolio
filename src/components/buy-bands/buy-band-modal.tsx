@@ -137,7 +137,7 @@ export function BuyBandModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["buy-bands"] });
       onOpenChange(false);
-      toast.success(isEdit ? "Buy band atualizada!" : "Buy band criada!");
+      toast.success(isEdit ? "DCA atualizada!" : "DCA criada!");
     },
     onError: (err: Error) => {
       setError(err.message);
@@ -149,10 +149,10 @@ export function BuyBandModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-strong">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar Buy Band" : "Criar Buy Band"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar DCA" : "Criar DCA"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Altere os dados da buy band."
+              ? "Altere os dados da DCA."
               : "Configure um alvo de compra para um ativo."}
           </DialogDescription>
         </DialogHeader>
@@ -265,7 +265,7 @@ export function BuyBandModal({
                 : "Criando..."
               : isEdit
                 ? "Salvar Alterações"
-                : "Criar Buy Band"}
+                : "Criar DCA"}
           </Button>
         </form>
       </DialogContent>

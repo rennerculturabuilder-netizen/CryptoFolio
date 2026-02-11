@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { formatPrice, formatQty } from "@/lib/utils";
 import { toast } from "sonner";
+import { DcaStrategyPanel } from "@/components/dca/dca-strategy-panel";
 
 type Asset = { id: string; symbol: string; name: string };
 type Portfolio = { id: string; name: string };
@@ -96,6 +97,33 @@ export default function BuyBandsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("__all__");
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
+
+  // DCA Adaptativo state
+  const [dcaAsset, setDcaAsset] = useState("BTC");
+
+  // Buscar assets que têm zonas DCA configuradas
+  const { data: dcaZones = [] } = useQuery<{ assetSymbol: string }[]>({
+    queryKey: ["dca-zones", selectedId],
+    queryFn: async () => {
+      if (!selectedId) return [];
+      const res = await fetch(`/api/portfolios/${selectedId}/dca-zones`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!selectedId,
+  });
+
+  const dcaAssets = useMemo(
+    () => Array.from(new Set(dcaZones.map((z) => z.assetSymbol))).sort(),
+    [dcaZones]
+  );
+
+  // Se o asset selecionado não existe na lista, usar o primeiro disponível
+  useEffect(() => {
+    if (dcaAssets.length > 0 && !dcaAssets.includes(dcaAsset)) {
+      setDcaAsset(dcaAssets[0]);
+    }
+  }, [dcaAssets, dcaAsset]);
 
   // Buscar buy bands
   const { data: buyBands = [], isLoading } = useQuery<BuyBand[]>({
@@ -157,9 +185,9 @@ export default function BuyBandsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["buy-bands"] });
       setDeleteConfirm(null);
-      toast.success("Buy band deletada");
+      toast.success("DCA deletada");
     },
-    onError: () => toast.error("Erro ao deletar buy band"),
+    onError: () => toast.error("Erro ao deletar DCA"),
   });
 
   // Filtros
@@ -229,7 +257,7 @@ export default function BuyBandsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Buy Bands</h1>
+          <h1 className="text-2xl font-bold tracking-tight">DCA</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Zonas de compra configuradas
           </p>
@@ -242,8 +270,25 @@ export default function BuyBandsPage() {
           className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
         >
           <Plus className="h-4 w-4 mr-1" />
-          Nova Buy Band
+          Nova DCA
         </Button>
+      </div>
+
+      {/* DCA Adaptativo */}
+      {selectedId && (
+        <DcaStrategyPanel
+          portfolioId={selectedId}
+          dcaAsset={dcaAsset}
+          onAssetChange={setDcaAsset}
+          availableAssets={dcaAssets.length > 0 ? dcaAssets : ["BTC"]}
+        />
+      )}
+
+      {/* Separador */}
+      <div className="border-t border-border/20 pt-2">
+        <h2 className="text-lg font-semibold tracking-tight text-muted-foreground">
+          Bandas Manuais
+        </h2>
       </div>
 
       {/* Stats Cards */}
@@ -322,7 +367,7 @@ export default function BuyBandsPage() {
             <div className="flex-1" />
 
             <span className="text-sm text-muted-foreground">
-              {filtered.length} de {totalBands} buy bands
+              {filtered.length} de {totalBands} DCAs
             </span>
           </div>
 
@@ -399,12 +444,12 @@ export default function BuyBandsPage() {
               <Target className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p className="text-lg font-medium text-foreground">
                 {totalBands === 0
-                  ? "Nenhuma buy band"
+                  ? "Nenhuma DCA"
                   : "Nenhum resultado"}
               </p>
               <p className="text-sm mt-1">
                 {totalBands === 0
-                  ? "Crie sua primeira buy band."
+                  ? "Crie sua primeira DCA."
                   : "Tente alterar os filtros."}
               </p>
             </div>
@@ -665,7 +710,7 @@ export default function BuyBandsPage() {
           <DialogHeader>
             <DialogTitle>Confirmar exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja deletar esta buy band?
+              Tem certeza que deseja deletar esta DCA?
             </DialogDescription>
           </DialogHeader>
           {deleteConfirm && (

@@ -1,7 +1,7 @@
 # Crypto Portfolio — Progresso
 
 ## Última atualização
-08/02/2026 23:40
+10/02/2026 12:00
 
 ## ✅ Concluído
 - Projeto Next.js 14 criado com TypeScript e App Router
@@ -262,8 +262,29 @@
   - Fix: `output: "standalone"` condicional (só via `STANDALONE=true`, não ativa na Vercel)
   - **App live em: https://crypto-folio-rho.vercel.app**
 
+- **DCA Adaptativo — Fase 1 (MVP):**
+  - **Modelo DcaZone** — zonas com faixa de preço (priceMin/priceMax), percentual base, order, label, executed, assetSymbol
+  - **Migration** `add_dca_zones` criada (SQL manual) — tabela DcaZone com unique constraint (portfolioId, assetSymbol, order)
+  - **Validação Zod** — `src/lib/validations/dcaZone.ts` (create + update schemas)
+  - **Engine de redistribuição adaptativa** — `src/lib/dca/engine.ts`:
+    - Classifica zonas: ATIVA (preço dentro da faixa), PULADA (preço acima do max), EXECUTADA
+    - Redistribui % das puladas/executadas proporcionalmente nas ativas
+    - Calcula valor USD e distância % do preço atual
+  - **Capital de stablecoins** — `src/lib/dca/capital.ts`: soma saldo de USD/USDT/USDC via `calcPositions()`
+  - **API Endpoints:**
+    - GET/POST `/api/portfolios/:id/dca-zones` — CRUD com validação de soma ≤ 100%
+    - PATCH/DELETE `/api/dca-zones/:id` — update/delete individual
+    - GET `/api/portfolios/:id/dca-strategy?asset=BTC` — retorna zonas computadas com redistribuição + resumo
+  - **Componentes Frontend:**
+    - `src/components/dca/asset-selector.tsx` — dropdown de ativo
+    - `src/components/dca/dca-zones-display.tsx` — tabela de zonas com badges coloridos, status, % ajustado
+    - `src/components/dca/dca-zone-modal.tsx` — modal create/edit com campos priceMin, priceMax, %, order, label
+    - `src/components/dca/dca-strategy-panel.tsx` — painel principal com summary cards + zonas + modal
+  - **Integração na página `/dashboard/buy-bands`** — DCA Adaptativo no topo, separador, bandas manuais abaixo
+  - `tsc --noEmit` compila limpo
+
 ## 🚧 Em progresso
-- Nenhum
+- Aplicar migration no banco (precisa DB online ou `prisma migrate deploy`)
 
 ## ⚠️ Problemas encontrados
 - `prisma migrate dev` não roda em terminal não-interativo (Claude Code) — usar direto no terminal ou `db push`
@@ -274,10 +295,13 @@
 2. ~~Alertas de preço / notificações~~ ✅
 3. ~~Admin panel + responsividade + polish~~ ✅
 4. ~~Production polish (UX, backend, DevOps, docs)~~ ✅
-5. Dark mode toggle (CSS variables já configuradas — atualmente dark-only)
-6. Testes E2E (Playwright ou Cypress)
-7. Gráfico de evolução patrimonial (LineChart com snapshots)
-8. Migrar routes restantes para helpers padronizados (prices, buy-bands, indicators, snapshots, etc.)
+5. ~~DCA Adaptativo — Fase 1 (MVP)~~ ✅
+6. Aplicar migration DcaZone no banco (local ou Neon)
+7. DCA Fase 2: RSI-based auto-adjustment, charting visual das zonas
+8. Dark mode toggle (CSS variables já configuradas — atualmente dark-only)
+9. Testes E2E (Playwright ou Cypress)
+10. Gráfico de evolução patrimonial (LineChart com snapshots)
+11. Migrar routes restantes para helpers padronizados (prices, buy-bands, indicators, snapshots, etc.)
 
 ## 🛠️ Comandos úteis
 ```bash

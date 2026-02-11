@@ -153,7 +153,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
       : []),
     {
       href: "/dashboard/buy-bands",
-      label: "Buy Bands",
+      label: "DCA",
       icon: Target,
       active: pathname === "/dashboard/buy-bands",
     },

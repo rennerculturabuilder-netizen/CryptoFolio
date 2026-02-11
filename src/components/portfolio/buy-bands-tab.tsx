@@ -61,7 +61,7 @@ export function BuyBandsTab({
     },
     onSuccess: () => {
       onRefresh();
-      toast.success("Buy band deletada");
+      toast.success("DCA deletada");
     },
     onError: () => toast.error("Erro ao deletar"),
   });
@@ -72,7 +72,7 @@ export function BuyBandsTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">{buyBands.length} buy bands</span>
+          <span className="text-sm text-muted-foreground">{buyBands.length} DCAs</span>
           {buyBands.length > 0 && (
             <Badge variant={executedCount === buyBands.length ? "success" : "warning"}>
               {executedCount}/{buyBands.length} executadas
@@ -94,7 +94,7 @@ export function BuyBandsTab({
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Criar Buy Band</DialogTitle>
+              <DialogTitle>Criar DCA</DialogTitle>
               <DialogDescription>Configure um alvo de compra para um ativo.</DialogDescription>
             </DialogHeader>
             <BuyBandForm
@@ -118,7 +118,7 @@ export function BuyBandsTab({
       )}
 
       {buyBands.length === 0 ? (
-        <p className="text-muted-foreground text-sm py-4">Nenhuma buy band configurada.</p>
+        <p className="text-muted-foreground text-sm py-4">Nenhuma DCA configurada.</p>
       ) : (
         <Table>
           <TableHeader>
@@ -162,7 +162,7 @@ export function BuyBandsTab({
                     size="icon"
                     className="h-8 w-8 text-destructive"
                     onClick={() => {
-                      if (confirm("Deletar buy band?")) deleteMutation.mutate(band.id);
+                      if (confirm("Deletar DCA?")) deleteMutation.mutate(band.id);
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -255,7 +255,7 @@ function BuyBandForm({
       </div>
       <Button type="submit" disabled={saving} className="w-full">
         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {saving ? "Criando..." : "Criar Buy Band"}
+        {saving ? "Criando..." : "Criar DCA"}
       </Button>
     </form>
   );

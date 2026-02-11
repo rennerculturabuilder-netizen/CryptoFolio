@@ -28,6 +28,7 @@ model Portfolio {
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
   buyBands     BuyBand[]
+  dcaZones     DcaZone[]
   snapshots    PortfolioSnapshot[]
 
   @@index([ownerId])
@@ -131,6 +132,24 @@ model BuyBand {
 
   @@unique([portfolioId, assetId, order])
   @@index([assetId])
+  @@index([portfolioId])
+}
+
+model DcaZone {
+  id             String   @id @default(cuid())
+  priceMin       Decimal  @db.Decimal(18, 8)
+  priceMax       Decimal  @db.Decimal(18, 8)
+  percentualBase Decimal  @db.Decimal(5, 2)
+  label          String?
+  order          Int      @default(1)
+  executed       Boolean  @default(false)
+  assetSymbol    String
+  portfolioId    String
+  portfolio      Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([portfolioId, assetSymbol, order])
   @@index([portfolioId])
 }
 

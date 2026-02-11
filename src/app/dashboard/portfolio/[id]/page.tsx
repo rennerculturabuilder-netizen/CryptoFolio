@@ -149,7 +149,7 @@ export default function PortfolioDetailPage() {
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="positions">Posições</TabsTrigger>
           <TabsTrigger value="transactions">Transações</TabsTrigger>
-          <TabsTrigger value="buyBands">Buy Bands</TabsTrigger>
+          <TabsTrigger value="buyBands">DCA</TabsTrigger>
           <TabsTrigger value="mas">Médias</TabsTrigger>
         </TabsList>
 

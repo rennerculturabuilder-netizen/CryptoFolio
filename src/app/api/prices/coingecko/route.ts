@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchPrices, fetchRsi } from "@/lib/services/coingecko";
+import { fetchFearGreed } from "@/lib/services/fear-greed";
 
 // GET /api/prices/coingecko?symbols=BTC,ETH,SOL&rsi=BTC
 export async function GET(req: Request) {
@@ -17,12 +18,13 @@ export async function GET(req: Request) {
   const symbols = symbolsParam.split(",").map((s) => s.trim().toUpperCase());
 
   try {
-    const [prices, rsi] = await Promise.all([
+    const [prices, rsi, fearGreed] = await Promise.all([
       fetchPrices(symbols),
       rsiSymbol ? fetchRsi(rsiSymbol) : Promise.resolve(null),
+      fetchFearGreed(),
     ]);
 
-    return NextResponse.json({ prices, rsi });
+    return NextResponse.json({ prices, rsi, fearGreed });
   } catch (error) {
     console.error("CoinGecko API error:", error);
     return NextResponse.json(

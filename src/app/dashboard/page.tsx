@@ -6,6 +6,7 @@ import { HeroCards } from "@/components/dashboard/hero-cards";
 import { AssetTable, buildAssetRows, type AssetRow } from "@/components/dashboard/asset-table";
 import { DistributionChart } from "@/components/dashboard/distribution-chart";
 import { RsiGauge } from "@/components/dashboard/rsi-gauge";
+import { FearGreedGauge } from "@/components/dashboard/fear-greed-gauge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Wallet } from "lucide-react";
@@ -23,6 +24,7 @@ type Position = {
 type CoingeckoResponse = {
   prices: PriceData[];
   rsi: { symbol: string; rsi: number; period: number } | null;
+  fearGreed: { value: number; classification: string } | null;
 };
 
 async function fetchWac(portfolioId: string): Promise<Position[]> {
@@ -36,12 +38,12 @@ async function fetchCoingeckoPrices(
   symbols: string[],
   rsiSymbol?: string
 ): Promise<CoingeckoResponse> {
-  if (symbols.length === 0) return { prices: [], rsi: null };
+  if (symbols.length === 0) return { prices: [], rsi: null, fearGreed: null };
   const rsiParam = rsiSymbol ? `&rsi=${rsiSymbol}` : "";
   const res = await fetch(
     `/api/prices/coingecko?symbols=${symbols.join(",")}${rsiParam}`
   );
-  if (!res.ok) return { prices: [], rsi: null };
+  if (!res.ok) return { prices: [], rsi: null, fearGreed: null };
   return res.json();
 }
 
@@ -185,6 +187,21 @@ export default function DashboardPage() {
               <RsiGauge
                 value={coingeckoData?.rsi?.rsi ?? null}
                 symbol={primarySymbol}
+                isLoading={pricesLoading}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Fear & Greed Index */}
+          <Card className="glass border-border/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold">
+                Fear &amp; Greed Index
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 flex justify-center">
+              <FearGreedGauge
+                value={coingeckoData?.fearGreed?.value ?? null}
                 isLoading={pricesLoading}
               />
             </CardContent>

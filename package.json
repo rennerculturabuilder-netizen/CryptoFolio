@@ -55,6 +55,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/node-cron": "^3.0.11",
