@@ -88,8 +88,12 @@ const TX_BADGE: Record<string, { icon: React.ElementType; bg: string; text: stri
 
 const PAGE_SIZE = 15;
 
-async function fetchTransactions(portfolioId: string): Promise<Transaction[]> {
-  const res = await fetch(`/api/portfolios/${portfolioId}/transactions`);
+async function fetchTransactions(portfolioId: string | null): Promise<Transaction[]> {
+  if (!portfolioId) return [];
+  const endpoint = portfolioId === "ALL"
+    ? "/api/portfolios/all/transactions"
+    : `/api/portfolios/${portfolioId}/transactions`;
+  const res = await fetch(endpoint);
   if (!res.ok) return [];
   return res.json();
 }
@@ -249,7 +253,9 @@ export default function TransactionsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Transações</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {selected?.name} — {transactions.length} transações
+            {selectedId === "ALL" 
+              ? "Todas as Carteiras" 
+              : selected?.name} — {transactions.length} transações
           </p>
         </div>
         <div className="flex items-center gap-2">
