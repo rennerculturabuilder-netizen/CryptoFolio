@@ -321,10 +321,10 @@ export function ZoneDetailsModal({
                             <Checkbox
                               id={`preorder-${point.id}`}
                               checked={point.preOrderPlaced}
-                              onCheckedChange={(checked) =>
+                              onCheckedChange={(checked: boolean) =>
                                 updatePoint.mutate({
                                   pointId: point.id,
-                                  updates: { preOrderPlaced: checked as boolean },
+                                  updates: { preOrderPlaced: checked },
                                 })
                               }
                               disabled={point.purchaseConfirmed}
@@ -342,10 +342,10 @@ export function ZoneDetailsModal({
                             <Checkbox
                               id={`confirm-${point.id}`}
                               checked={point.purchaseConfirmed}
-                              onCheckedChange={(checked) =>
+                              onCheckedChange={(checked: boolean) =>
                                 updatePoint.mutate({
                                   pointId: point.id,
-                                  updates: { purchaseConfirmed: checked as boolean },
+                                  updates: { purchaseConfirmed: checked },
                                 })
                               }
                             />
