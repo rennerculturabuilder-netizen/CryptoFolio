@@ -7,75 +7,136 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  password      String
+  name          String?
+  role          String      @default("user")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  portfolios    Portfolio[]
+}
+
+model Portfolio {
+  id           String        @id @default(cuid())
+  name         String
+  baseFiat     String        @default("USD")
+  ownerId      String
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+  buyBands     BuyBand[]
+  dcaZones     DcaZone[]
+  snapshots    PortfolioSnapshot[]
+
+  @@index([ownerId])
+}
+
+model PortfolioSnapshot {
+  id                String   @id @default(cuid())
+  portfolioId       String
+  portfolio         Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  timestamp         DateTime @default(now())
+  valueUsd          Decimal  @db.Decimal(18, 8)
+  costBasisUsd      Decimal  @db.Decimal(18, 8)
+  unrealizedPnl     Decimal  @db.Decimal(18, 8)
+  unrealizedPct     Decimal  @db.Decimal(18, 8)
+  positionsSnapshot Json
+
+  @@index([portfolioId])
+  @@index([timestamp])
+}
+
 model Asset {
-  id                                          String          @id
-  symbol                                      String          @unique
-  name                                        String
-  createdAt                                   DateTime        @default(now())
-  updatedAt                                   DateTime
-  BuyBand                                     BuyBand[]
-  PriceSnapshot                               PriceSnapshot[]
-  Transaction_Transaction_baseAssetIdToAsset  Transaction[]   @relation("Transaction_baseAssetIdToAsset")
-  Transaction_Transaction_feeAssetIdToAsset   Transaction[]   @relation("Transaction_feeAssetIdToAsset")
-  Transaction_Transaction_quoteAssetIdToAsset Transaction[]   @relation("Transaction_quoteAssetIdToAsset")
+  id                String          @id @default(cuid())
+  symbol            String          @unique
+  name              String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  baseTransactions  Transaction[]   @relation("BaseAsset")
+  quoteTransactions Transaction[]   @relation("QuoteAsset")
+  feeTransactions   Transaction[]   @relation("FeeAsset")
+  snapshots         PriceSnapshot[]
+  buyBands          BuyBand[]
+}
+
+model Transaction {
+  id            String    @id @default(cuid())
+  type          String    // BUY, SELL, SWAP, DEPOSIT, WITHDRAW, FEE
+  portfolioId   String
+  portfolio     Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  timestamp     DateTime
+  venue         String?
+  notes         String?
+
+  // Base asset (BUY, SELL, SWAP, DEPOSIT, WITHDRAW)
+  baseAssetId   String?
+  baseAsset     Asset?    @relation("BaseAsset", fields: [baseAssetId], references: [id])
+  baseQty       Decimal?  @db.Decimal(18, 8)
+
+  // Quote asset (BUY, SELL, SWAP)
+  quoteAssetId  String?
+  quoteAsset    Asset?    @relation("QuoteAsset", fields: [quoteAssetId], references: [id])
+  quoteQty      Decimal?  @db.Decimal(18, 8)
+
+  // Price (BUY, SELL — optional)
+  price         Decimal?  @db.Decimal(18, 8)
+
+  // Fee (optional em BUY, SELL, SWAP, DEPOSIT, WITHDRAW — obrigatório em FEE)
+  feeAssetId    String?
+  feeAsset      Asset?    @relation("FeeAsset", fields: [feeAssetId], references: [id])
+  feeQty        Decimal?  @db.Decimal(18, 8)
+
+  // Cost basis USD (DEPOSIT, WITHDRAW)
+  costBasisUsd  Decimal?  @db.Decimal(18, 8)
+
+  // Valor USD real do swap (crypto-crypto)
+  // Obrigatório para swap crypto-crypto, opcional para swap pra stable
+  valueUsd      Decimal?  @db.Decimal(18, 8)
+
+  createdAt     DateTime  @default(now())
+
+  @@index([portfolioId])
+  @@index([baseAssetId])
+  @@index([quoteAssetId])
+  @@index([timestamp])
+}
+
+model PriceSnapshot {
+  id        String   @id @default(cuid())
+  price     Decimal  @db.Decimal(18, 8)
+  source    String   @default("manual")
+  assetId   String
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([assetId])
+  @@index([createdAt])
 }
 
 model BuyBand {
-  id           String         @id
-  targetPrice  Decimal        @db.Decimal(18, 8)
-  quantity     Decimal        @db.Decimal(18, 8)
-  executed     Boolean        @default(false)
-  order        Int            @default(0)
-  assetId      String
-  portfolioId  String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
-  Asset        Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  Portfolio    Portfolio      @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
-  BuyBandAlert BuyBandAlert[]
+  id          String    @id @default(cuid())
+  targetPrice Decimal   @db.Decimal(18, 8)
+  quantity    Decimal   @db.Decimal(18, 8)
+  executed    Boolean   @default(false)
+  order       Int       @default(0)
+  assetId     String
+  asset       Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  portfolioId String
+  portfolio   Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  alerts      BuyBandAlert[]
 
   @@unique([portfolioId, assetId, order])
   @@index([assetId])
   @@index([portfolioId])
 }
 
-model BuyBandAlert {
-  id           String   @id
-  buyBandId    String
-  symbol       String
-  targetPrice  Decimal  @db.Decimal(18, 8)
-  currentPrice Decimal  @db.Decimal(18, 8)
-  message      String
-  read         Boolean  @default(false)
-  notified     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  BuyBand      BuyBand  @relation(fields: [buyBandId], references: [id], onDelete: Cascade)
-
-  @@index([buyBandId])
-  @@index([createdAt])
-  @@index([read])
-}
-
-model DcaEntryPoint {
-  id                String    @id
-  targetPrice       Decimal   @db.Decimal(18, 8)
-  value             Decimal   @db.Decimal(18, 8)
-  preOrderPlaced    Boolean   @default(false)
-  purchaseConfirmed Boolean   @default(false)
-  confirmedAt       DateTime?
-  zoneOrder         Int
-  dcaZoneId         String
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime
-  DcaZone           DcaZone   @relation(fields: [dcaZoneId], references: [id], onDelete: Cascade)
-
-  @@index([dcaZoneId])
-  @@index([preOrderPlaced])
-  @@index([purchaseConfirmed])
-}
-
 model DcaZone {
-  id             String          @id
+  id             String          @id @default(cuid())
   priceMin       Decimal         @db.Decimal(18, 8)
   priceMax       Decimal         @db.Decimal(18, 8)
   percentualBase Decimal         @db.Decimal(5, 2)
@@ -84,49 +145,18 @@ model DcaZone {
   executed       Boolean         @default(false)
   assetSymbol    String
   portfolioId    String
+  portfolio      Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  preOrders      PreOrder[]
+  entryPoints    DcaEntryPoint[]
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime
-  DcaEntryPoint  DcaEntryPoint[]
-  Portfolio      Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
-  PreOrder       PreOrder[]
+  updatedAt      DateTime        @updatedAt
 
   @@unique([portfolioId, assetSymbol, order])
   @@index([portfolioId])
 }
 
-model Portfolio {
-  id                String              @id
-  name              String
-  baseFiat          String              @default("USD")
-  ownerId           String
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime
-  BuyBand           BuyBand[]
-  DcaZone           DcaZone[]
-  User              User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  PortfolioSnapshot PortfolioSnapshot[]
-  Transaction       Transaction[]
-
-  @@index([ownerId])
-}
-
-model PortfolioSnapshot {
-  id                String    @id
-  portfolioId       String
-  timestamp         DateTime  @default(now())
-  valueUsd          Decimal   @db.Decimal(18, 8)
-  costBasisUsd      Decimal   @db.Decimal(18, 8)
-  unrealizedPnl     Decimal   @db.Decimal(18, 8)
-  unrealizedPct     Decimal   @db.Decimal(18, 8)
-  positionsSnapshot Json
-  Portfolio         Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
-
-  @@index([portfolioId])
-  @@index([timestamp])
-}
-
 model PreOrder {
-  id          String   @id
+  id          String   @id @default(cuid())
   targetPrice Decimal  @db.Decimal(18, 8)
   value       Decimal  @db.Decimal(18, 8)
   active      Boolean  @default(true)
@@ -134,63 +164,47 @@ model PreOrder {
   zoneOrder   Int
   assetSymbol String
   portfolioId String
+  dcaZone     DcaZone? @relation(fields: [dcaZoneId], references: [id], onDelete: Cascade)
   dcaZoneId   String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
-  DcaZone     DcaZone? @relation(fields: [dcaZoneId], references: [id], onDelete: Cascade)
+  updatedAt   DateTime @updatedAt
 
-  @@index([active])
+  @@index([portfolioId])
   @@index([assetSymbol])
-  @@index([portfolioId])
+  @@index([active])
 }
 
-model PriceSnapshot {
-  id        String   @id
-  price     Decimal  @db.Decimal(18, 8)
-  source    String   @default("manual")
-  assetId   String
-  createdAt DateTime @default(now())
-  Asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+model DcaEntryPoint {
+  id                String    @id @default(cuid())
+  targetPrice       Decimal   @db.Decimal(18, 8)
+  value             Decimal   @db.Decimal(18, 8)
+  preOrderPlaced    Boolean   @default(false)
+  purchaseConfirmed Boolean   @default(false)
+  confirmedAt       DateTime?
+  zoneOrder         Int
+  dcaZoneId         String
+  dcaZone           DcaZone   @relation(fields: [dcaZoneId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  @@index([assetId])
+  @@index([dcaZoneId])
+  @@index([preOrderPlaced])
+  @@index([purchaseConfirmed])
+}
+
+model BuyBandAlert {
+  id          String   @id @default(cuid())
+  buyBandId   String
+  buyBand     BuyBand  @relation(fields: [buyBandId], references: [id], onDelete: Cascade)
+  symbol      String
+  targetPrice Decimal  @db.Decimal(18, 8)
+  currentPrice Decimal @db.Decimal(18, 8)
+  message     String
+  read        Boolean  @default(false)
+  notified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([buyBandId])
+  @@index([read])
   @@index([createdAt])
-}
-
-model Transaction {
-  id                                    String    @id
-  type                                  String
-  portfolioId                           String
-  timestamp                             DateTime
-  venue                                 String?
-  notes                                 String?
-  baseAssetId                           String?
-  baseQty                               Decimal?  @db.Decimal(18, 8)
-  quoteAssetId                          String?
-  quoteQty                              Decimal?  @db.Decimal(18, 8)
-  price                                 Decimal?  @db.Decimal(18, 8)
-  feeAssetId                            String?
-  feeQty                                Decimal?  @db.Decimal(18, 8)
-  costBasisUsd                          Decimal?  @db.Decimal(18, 8)
-  valueUsd                              Decimal?  @db.Decimal(18, 8)
-  createdAt                             DateTime  @default(now())
-  Asset_Transaction_baseAssetIdToAsset  Asset?    @relation("Transaction_baseAssetIdToAsset", fields: [baseAssetId], references: [id])
-  Asset_Transaction_feeAssetIdToAsset   Asset?    @relation("Transaction_feeAssetIdToAsset", fields: [feeAssetId], references: [id])
-  Portfolio                             Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
-  Asset_Transaction_quoteAssetIdToAsset Asset?    @relation("Transaction_quoteAssetIdToAsset", fields: [quoteAssetId], references: [id])
-
-  @@index([baseAssetId])
-  @@index([portfolioId])
-  @@index([quoteAssetId])
-  @@index([timestamp])
-}
-
-model User {
-  id        String      @id
-  email     String      @unique
-  password  String
-  name      String?
-  role      String      @default("user")
-  createdAt DateTime    @default(now())
-  updatedAt DateTime
-  Portfolio Portfolio[]
 }
