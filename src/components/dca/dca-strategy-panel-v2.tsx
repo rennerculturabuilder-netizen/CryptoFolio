@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/select";
 import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { ZoneDetailsModal } from "./zone-details-modal";
 
 interface DCAZone {
   id: string;
@@ -55,8 +54,7 @@ interface DCAStrategy {
 
 export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string }) {
   const [selectedAsset, setSelectedAsset] = useState<string>("BTC");
-  const [selectedZone, setSelectedZone] = useState<DCAZone | null>(null);
-  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [expandedZoneId, setExpandedZoneId] = useState<string | null>(null);
 
   const { data, isLoading, refetch, isFetching } = useQuery<DCAStrategy>({
     queryKey: ["dca-strategy", portfolioId, selectedAsset],
@@ -117,9 +115,8 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string }) {
     }
   };
 
-  function handleZoneClick(zona: DCAZone) {
-    setSelectedZone(zona);
-    setDetailsModalOpen(true);
+  function handleZoneClick(zoneId: string) {
+    setExpandedZoneId(expandedZoneId === zoneId ? null : zoneId);
   }
 
   if (isLoading) {
@@ -186,35 +183,33 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Capital Total
+              Capital
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              ${formatPrice(data.capitalTotal)}
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-xl font-bold">
+                  ${formatPrice(data.capitalTotal)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Disponível</p>
+                <p className="text-lg font-bold text-blue-400">
+                  ${formatPrice(data.capitalDisponivel || data.capitalTotal)}
+                </p>
+              </div>
+              {data.capitalAlocado > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  ${formatPrice(data.capitalAlocado)} alocado
+                </p>
+              )}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Capital Disponível
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-400">
-              ${formatPrice(data.capitalDisponivel || data.capitalTotal)}
-            </div>
-            {data.capitalAlocado > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                ${formatPrice(data.capitalAlocado)} alocado
-              </p>
-            )}
           </CardContent>
         </Card>
 
@@ -285,11 +280,12 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string }) {
               (po) => po.zoneOrder === zona.order && po.active
             );
 
+            const isExpanded = expandedZoneId === zona.id;
+
             return (
               <div
                 key={zona.order}
-                onClick={() => handleZoneClick(zona)}
-                className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 ${
+                className={`rounded-lg border-2 transition-all ${
                   zona.status === "ATUAL"
                     ? "border-blue-500 bg-blue-500/10"
                     : zona.status === "ATIVA"
@@ -299,84 +295,99 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string }) {
                     : "border-gray-700 bg-gray-800/30"
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold">{zona.label}</h3>
-                      <Badge className={getStatusColor(zona.status)}>
-                        <span className="flex items-center gap-1">
-                          {getStatusIcon(zona.status)}
-                          {zona.status}
-                        </span>
-                      </Badge>
-                      {hasPreOrders && (
-                        <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
-                          Pré-ordens Ativas
+                {/* Header clicável */}
+                <div
+                  onClick={() => handleZoneClick(zona.id)}
+                  className="p-4 cursor-pointer hover:bg-accent/10 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold">{zona.label}</h3>
+                        <Badge className={getStatusColor(zona.status)}>
+                          <span className="flex items-center gap-1">
+                            {getStatusIcon(zona.status)}
+                            {zona.status}
+                          </span>
                         </Badge>
+                        {hasPreOrders && (
+                          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
+                            Pré-ordens Ativas
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        ${formatPrice(zona.priceMin)} - ${formatPrice(zona.priceMax)}
+                      </p>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            Alocação Base
+                          </p>
+                          <p className="text-sm font-medium">
+                            {zona.percentualBase}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            Alocação Ajustada
+                          </p>
+                          <p className="text-sm font-bold text-green-400">
+                            {zona.percentualAjustado}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            Valor Disponível
+                          </p>
+                          <p className="text-sm font-bold">
+                            ${formatPrice(zona.valorDisponivel)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            Distância
+                          </p>
+                          <p
+                            className={`text-sm font-medium ${
+                              zona.distanciaPercentual < 0
+                                ? "text-green-400"
+                                : zona.distanciaPercentual < 10
+                                ? "text-yellow-400"
+                                : "text-purple-400"
+                            }`}
+                          >
+                            {zona.distanciaPercentual > 0 ? "+" : ""}
+                            {zona.distanciaPercentual.toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+
+                      {zona.status === "AGUARDANDO" && (
+                        <p className="text-xs text-purple-400 mt-2 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Aguardando o preço chegar nesta faixa
+                        </p>
+                      )}
+
+                      {zona.status === "PULADA" && (
+                        <p className="text-xs text-gray-400 mt-2">
+                          💡 Alocação redistribuída nas zonas ativas
+                        </p>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      ${formatPrice(zona.priceMin)} - ${formatPrice(zona.priceMax)}
-                    </p>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Alocação Base
-                        </p>
-                        <p className="text-sm font-medium">
-                          {zona.percentualBase}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Alocação Ajustada
-                        </p>
-                        <p className="text-sm font-bold text-green-400">
-                          {zona.percentualAjustado}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Valor Disponível
-                        </p>
-                        <p className="text-sm font-bold">
-                          ${formatPrice(zona.valorDisponivel)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Distância
-                        </p>
-                        <p
-                          className={`text-sm font-medium ${
-                            zona.distanciaPercentual < 0
-                              ? "text-green-400"
-                              : zona.distanciaPercentual < 10
-                              ? "text-yellow-400"
-                              : "text-purple-400"
-                          }`}
-                        >
-                          {zona.distanciaPercentual > 0 ? "+" : ""}
-                          {zona.distanciaPercentual.toFixed(1)}%
-                        </p>
-                      </div>
-                    </div>
-
-                    {zona.status === "AGUARDANDO" && (
-                      <p className="text-xs text-purple-400 mt-2 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Aguardando o preço chegar nesta faixa
-                      </p>
-                    )}
-
-                    {zona.status === "PULADA" && (
-                      <p className="text-xs text-gray-400 mt-2">
-                        💡 Alocação redistribuída nas zonas ativas
-                      </p>
-                    )}
                   </div>
                 </div>
+
+                {/* Conteúdo expandido: Pontos de Entrada */}
+                {isExpanded && (
+                  <div className="border-t border-border/20 p-4 bg-secondary/20">
+                    <p className="text-sm text-muted-foreground">
+                      Pontos de entrada serão implementados aqui...
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -411,14 +422,6 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string }) {
         </CardContent>
       </Card>
 
-      {/* Modal de Detalhes da Zona */}
-      <ZoneDetailsModal
-        open={detailsModalOpen}
-        onOpenChange={setDetailsModalOpen}
-        portfolioId={portfolioId}
-        zoneId={selectedZone?.id || ""}
-        zone={selectedZone}
-      />
     </div>
   );
 }
