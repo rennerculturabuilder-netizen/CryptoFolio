@@ -16,21 +16,21 @@ const FIXED_ZONES: Record<string, Array<{
     { order: 2, priceMin: 55000, priceMax: 65000, percentualBase: 25, label: 'Zona 2' },
     { order: 3, priceMin: 50000, priceMax: 55000, percentualBase: 30, label: 'Zona 3' },
     { order: 4, priceMin: 40000, priceMax: 50000, percentualBase: 25, label: 'Zona 4' },
-    { order: 5, priceMin: 0, priceMax: 40000, percentualBase: 5, label: 'Emergência' },
+    { order: 5, priceMin: 30000, priceMax: 40000, percentualBase: 5, label: 'Emergência' },
   ],
   ETH: [
     { order: 1, priceMin: 2800, priceMax: 3500, percentualBase: 15, label: 'Zona 1' },
     { order: 2, priceMin: 2200, priceMax: 2800, percentualBase: 25, label: 'Zona 2' },
     { order: 3, priceMin: 1800, priceMax: 2200, percentualBase: 30, label: 'Zona 3' },
     { order: 4, priceMin: 1400, priceMax: 1800, percentualBase: 25, label: 'Zona 4' },
-    { order: 5, priceMin: 0, priceMax: 1400, percentualBase: 5, label: 'Emergência' },
+    { order: 5, priceMin: 1000, priceMax: 1400, percentualBase: 5, label: 'Emergência' },
   ],
   SOL: [
     { order: 1, priceMin: 150, priceMax: 200, percentualBase: 15, label: 'Zona 1' },
     { order: 2, priceMin: 100, priceMax: 150, percentualBase: 25, label: 'Zona 2' },
     { order: 3, priceMin: 75, priceMax: 100, percentualBase: 30, label: 'Zona 3' },
     { order: 4, priceMin: 50, priceMax: 75, percentualBase: 25, label: 'Zona 4' },
-    { order: 5, priceMin: 0, priceMax: 50, percentualBase: 5, label: 'Emergência' },
+    { order: 5, priceMin: 30, priceMax: 50, percentualBase: 5, label: 'Emergência' },
   ],
 };
 
@@ -175,13 +175,17 @@ export async function GET(
     const zonasCalculadas = zonasFixas.map((zona) => {
       const isAtiva = zonasAtivas.some((z) => z.order === zona.order);
       const isPulada = zonasPuladas.some((z) => z.order === zona.order);
+      const isAguardando = precoAtual > zona.priceMax; // Preço ainda não chegou
 
       let percentualAjustado = zona.percentualBase;
-      let status: 'ATIVA' | 'PULADA' | 'ATUAL' = 'ATIVA';
+      let status: 'ATIVA' | 'PULADA' | 'ATUAL' | 'AGUARDANDO' = 'ATIVA';
 
       if (isPulada) {
         percentualAjustado = 0;
         status = 'PULADA';
+      } else if (isAguardando) {
+        // Preço ainda não chegou nessa zona
+        status = 'AGUARDANDO';
       } else if (isAtiva && percentualPulado > 0) {
         // Redistribuir proporcionalmente
         const proporcao = zona.percentualBase / percentualAtivo;
@@ -245,6 +249,8 @@ export async function GET(
       active: po.active,
     }));
 
+    const zonasAguardando = zonasCalculadas.filter((z) => z.status === 'AGUARDANDO').length;
+
     return NextResponse.json({
       portfolioId,
       asset,
@@ -254,6 +260,7 @@ export async function GET(
       capitalAlocado,
       zonasAtivas: zonasAtivas.length,
       zonasPuladas: zonasPuladas.length,
+      zonasAguardando,
       zonas: zonasCalculadas,
       preOrders: preOrdersFormatted,
     });

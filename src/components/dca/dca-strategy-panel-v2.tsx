@@ -373,25 +373,7 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
         `/api/portfolios/${portfolioId}/dca-strategy?asset=${selectedAsset}`
       );
       if (!res.ok) throw new Error("Failed to fetch DCA strategy");
-      const rawData = await res.json();
-
-      // Ajustar status das zonas (corrigir PULADA → AGUARDANDO quando apropriado)
-      const zonas = rawData.zonas.map((zona: DCAZone) => {
-        // Se a zona tá "PULADA" mas o preço ainda não passou por ela, é AGUARDANDO
-        if (zona.status === 'PULADA' && zona.distanciaPercentual > 0) {
-          return { ...zona, status: 'AGUARDANDO' as const };
-        }
-        return zona;
-      });
-
-      const zonasAguardando = zonas.filter((z: DCAZone) => z.status === 'AGUARDANDO').length;
-
-      return {
-        ...rawData,
-        zonas,
-        zonasAguardando,
-        preOrders: rawData.preOrders || [],
-      };
+      return res.json();
     },
   });
 
