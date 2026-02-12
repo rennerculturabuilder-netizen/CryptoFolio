@@ -29,10 +29,10 @@ export function DistributionChart({ assets }: DistributionChartProps) {
             key={item.symbol}
             className="h-full transition-all duration-500 first:rounded-l-full last:rounded-r-full"
             style={{
-              width: `${Math.max(item.allocationPct, 0.5)}%`,
+              width: `${Math.max(item.allocationPct || 0, 0.5)}%`,
               backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
             }}
-            title={`${item.symbol}: ${item.allocationPct.toFixed(1)}%`}
+            title={`${item.symbol}: ${item.allocationPct != null ? item.allocationPct.toFixed(1) : 'N/A'}%`}
           />
         ))}
       </div>
@@ -51,7 +51,7 @@ export function DistributionChart({ assets }: DistributionChartProps) {
               {item.symbol}
             </span>
             <span className="text-sm font-medium">
-              {item.allocationPct.toFixed(1)}%
+              {item.allocationPct != null ? `${item.allocationPct.toFixed(1)}%` : 'N/A'}
             </span>
           </div>
         ))}

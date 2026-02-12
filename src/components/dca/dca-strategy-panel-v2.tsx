@@ -216,8 +216,10 @@ function ZoneEntryPoints({
       ) : entryPoints.length > 0 ? (
         <div className="space-y-2">
           {entryPoints.map((point, idx) => {
-            const btcQty = point.targetPrice > 0 ? point.value / point.targetPrice : 0;
-            const percentOfTotal = zoneValue > 0 ? (point.value / zoneValue) * 100 : 0;
+            const targetPrice = parseFloat(point.targetPrice?.toString() || '0');
+            const value = parseFloat(point.value?.toString() || '0');
+            const btcQty = targetPrice > 0 && value > 0 ? value / targetPrice : 0;
+            const percentOfTotal = zoneValue > 0 && value > 0 ? (value / zoneValue) * 100 : 0;
             
             return (
               <div
@@ -263,25 +265,25 @@ function ZoneEntryPoints({
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Preço Alvo BTC</p>
                     <p className="text-sm font-mono font-bold">
-                      ${formatPrice(point.targetPrice)}
+                      {targetPrice > 0 ? `$${targetPrice.toFixed(2)}` : 'N/A'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Valor USD</p>
                     <p className="text-sm font-mono font-bold text-green-400">
-                      {formatUsd(point.value)}
+                      {value > 0 ? `$${value.toFixed(2)}` : 'N/A'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Quantidade BTC</p>
                     <p className="text-sm font-mono font-bold">
-                      {btcQty.toFixed(8)} BTC
+                      {btcQty > 0 ? `${btcQty.toFixed(8)} BTC` : 'N/A'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">% da Zona</p>
                     <p className="text-sm font-mono font-bold text-blue-400">
-                      {percentOfTotal.toFixed(1)}%
+                      {percentOfTotal > 0 ? `${percentOfTotal.toFixed(1)}%` : 'N/A'}
                     </p>
                   </div>
                 </div>

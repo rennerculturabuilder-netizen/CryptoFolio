@@ -228,7 +228,7 @@ export function AssetTable({ assets, isLoading }: AssetTableProps) {
                     variant="outline"
                     className="font-mono text-xs border-border/50"
                   >
-                    {asset.allocationPct.toFixed(1)}%
+                    {asset.allocationPct != null ? `${asset.allocationPct.toFixed(1)}%` : 'N/A'}
                   </Badge>
                 </TableCell>
               </TableRow>

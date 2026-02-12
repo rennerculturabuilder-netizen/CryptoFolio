@@ -140,7 +140,7 @@ export function RsiGauge({ value, symbol, isLoading }: RsiGaugeProps) {
           className="text-3xl font-bold"
           fill={gaugeColor}
         >
-          {rsi.toFixed(1)}
+          {rsi != null ? rsi.toFixed(1) : 'N/A'}
         </text>
 
         {/* Zone labels */}
