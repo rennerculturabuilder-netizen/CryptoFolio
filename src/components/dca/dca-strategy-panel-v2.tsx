@@ -68,10 +68,12 @@ interface DCAStrategy {
 function ZoneEntryPoints({
   portfolioId,
   zoneId,
+  zoneValue,
   onUpdate,
 }: {
   portfolioId: string;
   zoneId: string;
+  zoneValue: number;
   onUpdate: () => void;
 }) {
   const [numberOfEntries, setNumberOfEntries] = useState(5);
@@ -210,86 +212,125 @@ function ZoneEntryPoints({
         </div>
       ) : entryPoints.length > 0 ? (
         <div className="space-y-2">
-          {entryPoints.map((point, idx) => (
-            <div
-              key={point.id}
-              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                point.purchaseConfirmed
-                  ? "bg-green-500/10 border-green-500/30"
-                  : point.preOrderPlaced
-                  ? "bg-yellow-500/10 border-yellow-500/30"
-                  : "bg-secondary/50 border-border"
-              }`}
-            >
-              <div className="flex items-center gap-4 flex-1">
-                <span className="text-xs font-mono text-muted-foreground w-6">
-                  {idx + 1}.
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-mono font-semibold">
-                    ${formatPrice(point.targetPrice)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatUsd(point.value)}
-                  </p>
+          {entryPoints.map((point, idx) => {
+            const btcQty = point.value / point.targetPrice;
+            const percentOfTotal = (point.value / zoneValue) * 100;
+            
+            return (
+              <div
+                key={point.id}
+                className={`p-4 rounded-lg border transition-all ${
+                  point.purchaseConfirmed
+                    ? "bg-green-500/10 border-green-500/30"
+                    : point.preOrderPlaced
+                    ? "bg-yellow-500/10 border-yellow-500/30"
+                    : "bg-secondary/50 border-border"
+                }`}
+              >
+                {/* Header com número e status */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-primary">
+                      Ponto {idx + 1}
+                    </span>
+                    {point.purchaseConfirmed && (
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                        Comprado
+                      </Badge>
+                    )}
+                    {point.preOrderPlaced && !point.purchaseConfirmed && (
+                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
+                        Pré-ordem Ativa
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                    onClick={() => deletePoint.mutate(point.id)}
+                    disabled={deletePoint.isPending}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+
+                {/* Grid com informações */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Preço Alvo BTC</p>
+                    <p className="text-sm font-mono font-bold">
+                      ${formatPrice(point.targetPrice)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Valor USD</p>
+                    <p className="text-sm font-mono font-bold text-green-400">
+                      {formatUsd(point.value)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Quantidade BTC</p>
+                    <p className="text-sm font-mono font-bold">
+                      {btcQty.toFixed(8)} BTC
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">% da Zona</p>
+                    <p className="text-sm font-mono font-bold text-blue-400">
+                      {percentOfTotal.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* Checkboxes */}
+                <div className="flex items-center gap-4 pt-3 border-t border-border/20">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`preorder-${point.id}`}
+                      checked={point.preOrderPlaced}
+                      onCheckedChange={(checked) => {
+                        if (typeof checked === 'boolean') {
+                          updatePoint.mutate({
+                            pointId: point.id,
+                            updates: { preOrderPlaced: checked },
+                          });
+                        }
+                      }}
+                      disabled={point.purchaseConfirmed}
+                    />
+                    <label
+                      htmlFor={`preorder-${point.id}`}
+                      className="text-sm cursor-pointer select-none"
+                    >
+                      Pré-ordem realizada
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`confirm-${point.id}`}
+                      checked={point.purchaseConfirmed}
+                      onCheckedChange={(checked) => {
+                        if (typeof checked === 'boolean') {
+                          updatePoint.mutate({
+                            pointId: point.id,
+                            updates: { purchaseConfirmed: checked },
+                          });
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`confirm-${point.id}`}
+                      className="text-sm cursor-pointer select-none"
+                    >
+                      Confirme compra
+                    </label>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex items-center gap-4">
-                {/* Checkbox Pré-ordem */}
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`preorder-${point.id}`}
-                    checked={point.preOrderPlaced}
-                    onCheckedChange={(checked: boolean) =>
-                      updatePoint.mutate({
-                        pointId: point.id,
-                        updates: { preOrderPlaced: checked },
-                      })
-                    }
-                    disabled={point.purchaseConfirmed}
-                  />
-                  <label
-                    htmlFor={`preorder-${point.id}`}
-                    className="text-xs cursor-pointer select-none"
-                  >
-                    Pré-ordem
-                  </label>
-                </div>
-
-                {/* Checkbox Confirme Compra */}
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`confirm-${point.id}`}
-                    checked={point.purchaseConfirmed}
-                    onCheckedChange={(checked: boolean) =>
-                      updatePoint.mutate({
-                        pointId: point.id,
-                        updates: { purchaseConfirmed: checked },
-                      })
-                    }
-                  />
-                  <label
-                    htmlFor={`confirm-${point.id}`}
-                    className="text-xs cursor-pointer select-none"
-                  >
-                    Confirme compra
-                  </label>
-                </div>
-
-                {/* Delete button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => deletePoint.mutate(point.id)}
-                  disabled={deletePoint.isPending}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Progress summary */}
           <div className="pt-3 border-t border-border mt-3">
@@ -653,6 +694,7 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
                   <ZoneEntryPoints
                     portfolioId={portfolioId}
                     zoneId={zona.id}
+                    zoneValue={zona.valorEmDolar}
                     onUpdate={() => refetch()}
                   />
                 )}
