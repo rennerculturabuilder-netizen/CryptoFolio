@@ -4,6 +4,7 @@ import { z } from "zod";
 
 const createEntryPointsSchema = z.object({
   numberOfEntries: z.number().min(1).max(10),
+  zoneValueUsd: z.number().optional(),
 });
 
 /**
@@ -17,7 +18,7 @@ export async function POST(
   try {
     const { id: portfolioId, zoneId } = params;
     const body = await req.json();
-    const { numberOfEntries } = createEntryPointsSchema.parse(body);
+    const { numberOfEntries, zoneValueUsd } = createEntryPointsSchema.parse(body);
 
     // Buscar zona DCA
     const zone = await prisma.dcaZone.findUnique({
@@ -44,14 +45,16 @@ export async function POST(
       where: { dcaZoneId: zoneId },
     });
 
-    // Calcular distribuição
+    // Calcular distribuição de preços
     const priceMin = parseFloat(zone.priceMin.toString());
     const priceMax = parseFloat(zone.priceMax.toString());
     const priceRange = priceMax - priceMin;
-    const priceStep = priceRange / (numberOfEntries - 1);
+    const priceStep = numberOfEntries > 1 ? priceRange / (numberOfEntries - 1) : 0;
 
-    const totalValue = parseFloat(zone.percentualBase.toString()) * 0.01; // ex: 20% = 0.20
-    const valuePerEntry = totalValue / numberOfEntries;
+    // Calcular valor por entrada (em USD)
+    // Se zoneValueUsd foi fornecido, usar ele; senão, usar o percentual da zona (fallback)
+    const zoneValueInUsd = zoneValueUsd || parseFloat(zone.percentualBase.toString());
+    const valuePerEntry = zoneValueInUsd / numberOfEntries;
 
     // Gerar pontos de entrada (do menor preço pro maior)
     const entryPoints = [];

@@ -104,7 +104,10 @@ function ZoneEntryPoints({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ numberOfEntries: count }),
+          body: JSON.stringify({ 
+            numberOfEntries: count,
+            zoneValueUsd: zoneValue,
+          }),
         }
       );
       if (!res.ok) throw new Error("Failed to generate entry points");
@@ -290,12 +293,11 @@ function ZoneEntryPoints({
                       id={`preorder-${point.id}`}
                       checked={point.preOrderPlaced}
                       onCheckedChange={(checked) => {
-                        if (typeof checked === 'boolean') {
-                          updatePoint.mutate({
-                            pointId: point.id,
-                            updates: { preOrderPlaced: checked },
-                          });
-                        }
+                        const isChecked = checked === true;
+                        updatePoint.mutate({
+                          pointId: point.id,
+                          updates: { preOrderPlaced: isChecked },
+                        });
                       }}
                       disabled={point.purchaseConfirmed}
                     />
@@ -312,12 +314,11 @@ function ZoneEntryPoints({
                       id={`confirm-${point.id}`}
                       checked={point.purchaseConfirmed}
                       onCheckedChange={(checked) => {
-                        if (typeof checked === 'boolean') {
-                          updatePoint.mutate({
-                            pointId: point.id,
-                            updates: { purchaseConfirmed: checked },
-                          });
-                        }
+                        const isChecked = checked === true;
+                        updatePoint.mutate({
+                          pointId: point.id,
+                          updates: { purchaseConfirmed: isChecked },
+                        });
                       }}
                     />
                     <label
