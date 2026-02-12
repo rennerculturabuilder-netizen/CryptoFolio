@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -13,8 +15,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock } from "lucide-react";
-import { formatPrice } from "@/lib/utils";
+import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock, Target, Plus, Trash2 } from "lucide-react";
+import { formatPrice, formatUsd } from "@/lib/utils";
+import { toast } from "sonner";
+
+type DcaEntryPoint = {
+  id: string;
+  targetPrice: number;
+  value: number;
+  preOrderPlaced: boolean;
+  purchaseConfirmed: boolean;
+  zoneOrder: number;
+};
 
 interface DCAZone {
   id: string;
@@ -52,7 +64,263 @@ interface DCAStrategy {
   preOrders: PreOrder[];
 }
 
-export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string }) {
+// Componente inline para pontos de entrada de uma zona
+function ZoneEntryPoints({
+  portfolioId,
+  zoneId,
+  onUpdate,
+}: {
+  portfolioId: string;
+  zoneId: string;
+  onUpdate: () => void;
+}) {
+  const [numberOfEntries, setNumberOfEntries] = useState(5);
+  const queryClient = useQueryClient();
+
+  // Fetch entry points
+  const { data: entryPointsData, isLoading: loadingPoints } = useQuery<{
+    entryPoints: DcaEntryPoint[];
+  }>({
+    queryKey: ["entry-points", zoneId],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/portfolios/${portfolioId}/dca-zones/${zoneId}/entry-points`
+      );
+      if (!res.ok) throw new Error("Failed to fetch entry points");
+      return res.json();
+    },
+    enabled: !!zoneId,
+  });
+
+  const entryPoints = entryPointsData?.entryPoints || [];
+
+  // Generate entry points mutation
+  const generatePoints = useMutation({
+    mutationFn: async (count: number) => {
+      const res = await fetch(
+        `/api/portfolios/${portfolioId}/dca-zones/${zoneId}/entry-points`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ numberOfEntries: count }),
+        }
+      );
+      if (!res.ok) throw new Error("Failed to generate entry points");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["entry-points", zoneId] });
+      queryClient.invalidateQueries({ queryKey: ["dca-strategy"] });
+      toast.success(`${numberOfEntries} pontos de entrada gerados!`);
+      onUpdate();
+    },
+    onError: () => {
+      toast.error("Erro ao gerar pontos de entrada");
+    },
+  });
+
+  // Update entry point mutation
+  const updatePoint = useMutation({
+    mutationFn: async ({
+      pointId,
+      updates,
+    }: {
+      pointId: string;
+      updates: { preOrderPlaced?: boolean; purchaseConfirmed?: boolean };
+    }) => {
+      const res = await fetch(
+        `/api/portfolios/${portfolioId}/entry-points/${pointId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        }
+      );
+      if (!res.ok) throw new Error("Failed to update entry point");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["entry-points", zoneId] });
+      queryClient.invalidateQueries({ queryKey: ["dca-strategy"] });
+      onUpdate();
+    },
+    onError: () => {
+      toast.error("Erro ao atualizar ponto de entrada");
+    },
+  });
+
+  // Delete entry point mutation
+  const deletePoint = useMutation({
+    mutationFn: async (pointId: string) => {
+      const res = await fetch(
+        `/api/portfolios/${portfolioId}/entry-points/${pointId}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error("Failed to delete entry point");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["entry-points", zoneId] });
+      queryClient.invalidateQueries({ queryKey: ["dca-strategy"] });
+      toast.success("Ponto de entrada removido");
+      onUpdate();
+    },
+    onError: () => {
+      toast.error("Erro ao remover ponto de entrada");
+    },
+  });
+
+  return (
+    <div className="border-t border-border/20 p-4 bg-secondary/20 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Target className="h-4 w-4" />
+          Pontos de Entrada
+        </h3>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={numberOfEntries}
+            onChange={(e) => setNumberOfEntries(parseInt(e.target.value) || 5)}
+            className="w-20 h-8"
+          />
+          <Button
+            size="sm"
+            onClick={() => generatePoints.mutate(numberOfEntries)}
+            disabled={generatePoints.isPending}
+            className="gap-2"
+          >
+            {generatePoints.isPending ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Gerar Pontos
+          </Button>
+        </div>
+      </div>
+
+      {loadingPoints ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ) : entryPoints.length > 0 ? (
+        <div className="space-y-2">
+          {entryPoints.map((point, idx) => (
+            <div
+              key={point.id}
+              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                point.purchaseConfirmed
+                  ? "bg-green-500/10 border-green-500/30"
+                  : point.preOrderPlaced
+                  ? "bg-yellow-500/10 border-yellow-500/30"
+                  : "bg-secondary/50 border-border"
+              }`}
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <span className="text-xs font-mono text-muted-foreground w-6">
+                  {idx + 1}.
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-mono font-semibold">
+                    ${formatPrice(point.targetPrice)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatUsd(point.value)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {/* Checkbox Pré-ordem */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`preorder-${point.id}`}
+                    checked={point.preOrderPlaced}
+                    onCheckedChange={(checked: boolean) =>
+                      updatePoint.mutate({
+                        pointId: point.id,
+                        updates: { preOrderPlaced: checked },
+                      })
+                    }
+                    disabled={point.purchaseConfirmed}
+                  />
+                  <label
+                    htmlFor={`preorder-${point.id}`}
+                    className="text-xs cursor-pointer select-none"
+                  >
+                    Pré-ordem
+                  </label>
+                </div>
+
+                {/* Checkbox Confirme Compra */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`confirm-${point.id}`}
+                    checked={point.purchaseConfirmed}
+                    onCheckedChange={(checked: boolean) =>
+                      updatePoint.mutate({
+                        pointId: point.id,
+                        updates: { purchaseConfirmed: checked },
+                      })
+                    }
+                  />
+                  <label
+                    htmlFor={`confirm-${point.id}`}
+                    className="text-xs cursor-pointer select-none"
+                  >
+                    Confirme compra
+                  </label>
+                </div>
+
+                {/* Delete button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => deletePoint.mutate(point.id)}
+                  disabled={deletePoint.isPending}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {/* Progress summary */}
+          <div className="pt-3 border-t border-border mt-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Progresso:</span>
+              <div className="flex gap-4">
+                <span className="text-yellow-400">
+                  {entryPoints.filter((p) => p.preOrderPlaced).length}/
+                  {entryPoints.length} pré-ordens
+                </span>
+                <span className="text-green-400">
+                  {entryPoints.filter((p) => p.purchaseConfirmed).length}/
+                  {entryPoints.length} compras
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 text-center text-muted-foreground text-sm">
+          <p>Nenhum ponto de entrada configurado.</p>
+          <p className="text-xs mt-1">
+            Defina quantas entradas deseja e clique em &quot;Gerar Pontos&quot;
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
   const [selectedAsset, setSelectedAsset] = useState<string>("BTC");
   const [expandedZoneId, setExpandedZoneId] = useState<string | null>(null);
 
@@ -382,11 +650,11 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string }) {
 
                 {/* Conteúdo expandido: Pontos de Entrada */}
                 {isExpanded && (
-                  <div className="border-t border-border/20 p-4 bg-secondary/20">
-                    <p className="text-sm text-muted-foreground">
-                      Pontos de entrada serão implementados aqui...
-                    </p>
-                  </div>
+                  <ZoneEntryPoints
+                    portfolioId={portfolioId}
+                    zoneId={zona.id}
+                    onUpdate={() => refetch()}
+                  />
                 )}
               </div>
             );
