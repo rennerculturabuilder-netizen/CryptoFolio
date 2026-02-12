@@ -25,13 +25,8 @@ export default function BuyBandsPage() {
   return (
     <div className="space-y-6 animate-slide-up">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">DCA</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Zonas de compra configuradas automaticamente
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">DCA Adaptativo</h1>
       </div>
 
       {/* DCA Adaptativo */}
