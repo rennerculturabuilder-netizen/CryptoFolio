@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock, Target, Plus, Trash2 } from "lucide-react";
-import { formatPrice, formatUsd } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils";
 import { toast } from "sonner";
 
 type DcaEntryPoint = {
