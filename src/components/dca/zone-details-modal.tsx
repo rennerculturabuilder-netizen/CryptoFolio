@@ -290,13 +290,6 @@ export function ZoneDetailsModal({
               <Card className="bg-secondary/30">
                 <CardContent className="p-4 space-y-2">
                   {entryPoints.map((point, idx) => {
-                    const preOrdersCount = entryPoints.filter(
-                      (p) => p.preOrderPlaced
-                    ).length;
-                    const confirmedCount = entryPoints.filter(
-                      (p) => p.purchaseConfirmed
-                    ).length;
-
                     return (
                       <div
                         key={point.id}
