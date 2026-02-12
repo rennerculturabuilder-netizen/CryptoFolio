@@ -44,6 +44,8 @@ interface DCAStrategy {
   asset: string;
   precoAtual: number;
   capitalTotal: number;
+  capitalDisponivel: number;
+  capitalAlocado: number;
   zonasAtivas: number;
   zonasPuladas: number;
   zonasAguardando: number;
@@ -184,7 +186,7 @@ export function DcaStrategyPanel({ portfolioId }: { portfolioId: string }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -195,6 +197,24 @@ export function DcaStrategyPanel({ portfolioId }: { portfolioId: string }) {
             <div className="text-2xl font-bold">
               ${formatPrice(data.capitalTotal)}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Capital Disponível
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-400">
+              ${formatPrice(data.capitalDisponivel || data.capitalTotal)}
+            </div>
+            {data.capitalAlocado > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                ${formatPrice(data.capitalAlocado)} alocado
+              </p>
+            )}
           </CardContent>
         </Card>
 

@@ -206,7 +206,25 @@ export async function GET(
       };
     });
 
-    // Buscar pré-ordens ativas do portfolio + asset
+    // Buscar todos os entry points do portfolio + asset
+    const zoneIds = zonasDb.map((z) => z.id);
+    const entryPoints = await prisma.dcaEntryPoint.findMany({
+      where: {
+        dcaZoneId: { in: zoneIds },
+      },
+    });
+
+    // Calcular capital já alocado (pré-ordens + compras confirmadas)
+    const capitalAlocado = entryPoints.reduce((sum, ep) => {
+      if (ep.preOrderPlaced || ep.purchaseConfirmed) {
+        return sum + parseFloat(ep.value.toString());
+      }
+      return sum;
+    }, 0);
+
+    const capitalDisponivel = totalUsd - capitalAlocado;
+
+    // Buscar pré-ordens ativas do portfolio + asset (legacy - pode remover depois)
     const preOrders = await prisma.preOrder.findMany({
       where: {
         portfolioId,
@@ -232,6 +250,8 @@ export async function GET(
       asset,
       precoAtual,
       capitalTotal: totalUsd,
+      capitalDisponivel: Math.max(0, capitalDisponivel),
+      capitalAlocado,
       zonasAtivas: zonasAtivas.length,
       zonasPuladas: zonasPuladas.length,
       zonas: zonasCalculadas,
