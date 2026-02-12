@@ -216,8 +216,8 @@ function ZoneEntryPoints({
       ) : entryPoints.length > 0 ? (
         <div className="space-y-2">
           {entryPoints.map((point, idx) => {
-            const btcQty = point.value / point.targetPrice;
-            const percentOfTotal = (point.value / zoneValue) * 100;
+            const btcQty = point.targetPrice > 0 ? point.value / point.targetPrice : 0;
+            const percentOfTotal = zoneValue > 0 ? (point.value / zoneValue) * 100 : 0;
             
             return (
               <div
@@ -578,12 +578,8 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
               <div
                 key={zona.order}
                 className={`rounded-lg border-2 transition-all ${
-                  zona.status === "ATUAL"
+                  isExpanded
                     ? "border-blue-500 bg-blue-500/10"
-                    : zona.status === "ATIVA"
-                    ? "border-green-500/30 bg-green-500/5"
-                    : zona.status === "AGUARDANDO"
-                    ? "border-purple-500/30 bg-purple-500/5"
                     : "border-gray-700 bg-gray-800/30"
                 }`}
               >
@@ -643,15 +639,21 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
                           </p>
                           <p
                             className={`text-sm font-medium ${
-                              zona.distanciaPercentual < 0
+                              zona.distanciaPercentual != null && zona.distanciaPercentual < 0
                                 ? "text-green-400"
-                                : zona.distanciaPercentual < 10
+                                : zona.distanciaPercentual != null && zona.distanciaPercentual < 10
                                 ? "text-yellow-400"
                                 : "text-purple-400"
                             }`}
                           >
-                            {zona.distanciaPercentual > 0 ? "+" : ""}
-                            {zona.distanciaPercentual.toFixed(1)}%
+                            {zona.distanciaPercentual != null ? (
+                              <>
+                                {zona.distanciaPercentual > 0 ? "+" : ""}
+                                {zona.distanciaPercentual.toFixed(1)}%
+                              </>
+                            ) : (
+                              "N/A"
+                            )}
                           </p>
                         </div>
                       </div>
