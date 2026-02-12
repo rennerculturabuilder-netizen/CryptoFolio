@@ -164,32 +164,31 @@ export async function GET(
 
     const zonaIdMap = new Map(zonasDb.map((z) => [z.order, z.id]));
 
-    // Identificar zonas ativas e puladas
+    // Identificar zonas ativas (preço já caiu abaixo)
     const zonasAtivas = zonasFixas.filter((z) => precoAtual < z.priceMin);
-    const zonasPuladas = zonasFixas.filter((z) => precoAtual >= z.priceMax);
+    
+    // Zonas aguardando (preço ainda está acima)
+    const zonasAguardando = zonasFixas.filter((z) => precoAtual > z.priceMax);
 
-    // Calcular redistribuição
+    // Calcular redistribuição (apenas das zonas aguardando pro capital das ativas)
     const percentualAtivo = zonasAtivas.reduce((sum, z) => sum + z.percentualBase, 0);
-    const percentualPulado = zonasPuladas.reduce((sum, z) => sum + z.percentualBase, 0);
+    const percentualAguardando = zonasAguardando.reduce((sum, z) => sum + z.percentualBase, 0);
 
     const zonasCalculadas = zonasFixas.map((zona) => {
       const isAtiva = zonasAtivas.some((z) => z.order === zona.order);
-      const isPulada = zonasPuladas.some((z) => z.order === zona.order);
-      const isAguardando = precoAtual > zona.priceMax; // Preço ainda não chegou
+      const isAguardando = zonasAguardando.some((z) => z.order === zona.order);
 
       let percentualAjustado = zona.percentualBase;
       let status: 'ATIVA' | 'PULADA' | 'ATUAL' | 'AGUARDANDO' = 'ATIVA';
 
-      if (isPulada) {
+      if (isAguardando) {
+        // Preço ainda está acima desta zona (aguardando cair)
         percentualAjustado = 0;
-        status = 'PULADA';
-      } else if (isAguardando) {
-        // Preço ainda não chegou nessa zona
         status = 'AGUARDANDO';
-      } else if (isAtiva && percentualPulado > 0) {
-        // Redistribuir proporcionalmente
+      } else if (isAtiva && percentualAguardando > 0) {
+        // Redistribuir capital das zonas aguardando proporcionalmente nas ativas
         const proporcao = zona.percentualBase / percentualAtivo;
-        percentualAjustado = zona.percentualBase + proporcao * percentualPulado;
+        percentualAjustado = zona.percentualBase + proporcao * percentualAguardando;
       }
 
       // Zona atual (preço dentro do range)
@@ -249,7 +248,8 @@ export async function GET(
       active: po.active,
     }));
 
-    const zonasAguardando = zonasCalculadas.filter((z) => z.status === 'AGUARDANDO').length;
+    const zonasAguardandoCount = zonasCalculadas.filter((z) => z.status === 'AGUARDANDO').length;
+    const zonasAtivasCount = zonasCalculadas.filter((z) => z.status === 'ATIVA').length;
 
     return NextResponse.json({
       portfolioId,
@@ -258,9 +258,9 @@ export async function GET(
       capitalTotal: totalUsd,
       capitalDisponivel: Math.max(0, capitalDisponivel),
       capitalAlocado,
-      zonasAtivas: zonasAtivas.length,
-      zonasPuladas: zonasPuladas.length,
-      zonasAguardando,
+      zonasAtivas: zonasAtivasCount,
+      zonasPuladas: 0, // Não usamos mais este status
+      zonasAguardando: zonasAguardandoCount,
       zonas: zonasCalculadas,
       preOrders: preOrdersFormatted,
     });
