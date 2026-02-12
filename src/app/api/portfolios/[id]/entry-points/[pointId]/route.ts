@@ -59,7 +59,7 @@ export async function PATCH(
     console.error("Error updating entry point:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validação falhou", details: error.errors },
+        { error: "Validação falhou", details: error.issues },
         { status: 400 }
       );
     }
