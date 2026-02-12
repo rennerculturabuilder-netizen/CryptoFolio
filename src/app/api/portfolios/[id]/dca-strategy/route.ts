@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAuth, requirePortfolioAccess } from '@/lib/guards';
+import { handleApiError } from '@/lib/api-response';
 
 // Zonas fixas por ativo (em USD)
 const FIXED_ZONES: Record<string, Array<{
@@ -104,22 +104,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const session = await requireAuth();
     const portfolioId = params.id;
     const asset = req.nextUrl.searchParams.get('asset') || 'BTC';
 
-    // Verificar ownership
-    const portfolio = await prisma.portfolio.findUnique({
-      where: { id: portfolioId, ownerId: session.user.id },
-    });
-
-    if (!portfolio) {
-      return NextResponse.json({ error: 'Portfolio not found' }, { status: 404 });
-    }
+    await requirePortfolioAccess(session.user.id, portfolioId, session.user.role);
 
     // Buscar dados
     const precoAtual = await getCryptoPrice(asset);
@@ -265,11 +254,7 @@ export async function GET(
       preOrders: preOrdersFormatted,
     });
   } catch (error) {
-    console.error('Error calculating DCA strategy:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GET /api/portfolios/:id/dca-strategy');
   }
 }
 
@@ -278,23 +263,13 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const session = await requireAuth();
+    await requirePortfolioAccess(session.user.id, params.id, session.user.role);
 
     const { asset } = await req.json();
 
-    // Recalcular estratégia (mesmo código do GET)
-    // Aqui você pode adicionar lógica para salvar as zonas calculadas no banco
-    // Por agora, apenas retorna o cálculo
-
     return NextResponse.json({ message: 'Strategy recalculated', asset, portfolioId: params.id });
   } catch (error) {
-    console.error('Error recalculating DCA strategy:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'POST /api/portfolios/:id/dca-strategy');
   }
 }

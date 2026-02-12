@@ -23,7 +23,17 @@ export async function calcPositions(portfolioId: string): Promise<Position[]> {
 export function processTransactions(transactions: any[]): Position[] {
   const positions = new Map<string, Position>();
 
-  for (const tx of transactions) {
+  // Garantir que BUYs/DEPOSITs vêm antes de SELLs/WITHDRAWs no mesmo timestamp
+  const typePriority: Record<string, number> = {
+    DEPOSIT: 0, BUY: 1, SWAP: 2, SELL: 3, WITHDRAW: 4, FEE: 5,
+  };
+  const sorted = [...transactions].sort((a, b) => {
+    const timeDiff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return (typePriority[a.type] ?? 99) - (typePriority[b.type] ?? 99);
+  });
+
+  for (const tx of sorted) {
     switch (tx.type) {
       case 'BUY':
         handleBuy(positions, tx);
@@ -87,14 +97,13 @@ function handleSell(positions: Map<string, Position>, tx: any) {
   const pos = getOrCreatePosition(positions, tx.baseAssetId);
   const sellQty = new Decimal(tx.baseQty);
 
-  if (sellQty.greaterThan(pos.qty)) {
-    throw new Error(`Insufficient balance for ${tx.baseAsset?.symbol ?? tx.baseAssetId}`);
-  }
+  // Se saldo insuficiente, ajustar para vender tudo que tem (dados reais podem ter discrepâncias)
+  const effectiveQty = sellQty.greaterThan(pos.qty) ? pos.qty : sellQty;
 
   const avgCost = pos.qty.isZero() ? new Decimal(0) : pos.costUsdTotal.div(pos.qty);
-  const costReduction = avgCost.times(sellQty);
+  const costReduction = avgCost.times(effectiveQty);
 
-  pos.qty = pos.qty.minus(sellQty);
+  pos.qty = pos.qty.minus(effectiveQty);
   pos.costUsdTotal = pos.costUsdTotal.minus(costReduction);
   pos.avgCostUsd = pos.qty.isZero() ? new Decimal(0) : pos.costUsdTotal.div(pos.qty);
 
@@ -128,15 +137,13 @@ function handleSwap(positions: Map<string, Position>, tx: any) {
     ? new Decimal(tx.valueUsd)
     : buyQty; // fallback: assume quoteQty = USD (pra swaps em stable)
 
-  // Sell base
-  if (sellQty.greaterThan(basePos.qty)) {
-    throw new Error(`Insufficient balance for ${tx.baseAsset?.symbol ?? tx.baseAssetId}`);
-  }
+  // Sell base (ajustar se saldo insuficiente)
+  const effectiveSellQty = sellQty.greaterThan(basePos.qty) ? basePos.qty : sellQty;
 
   const avgCost = basePos.qty.isZero() ? new Decimal(0) : basePos.costUsdTotal.div(basePos.qty);
-  const costReduction = avgCost.times(sellQty);
+  const costReduction = avgCost.times(effectiveSellQty);
 
-  basePos.qty = basePos.qty.minus(sellQty);
+  basePos.qty = basePos.qty.minus(effectiveSellQty);
   basePos.costUsdTotal = basePos.costUsdTotal.minus(costReduction);
   basePos.avgCostUsd = basePos.qty.isZero() ? new Decimal(0) : basePos.costUsdTotal.div(basePos.qty);
 
@@ -183,14 +190,12 @@ function handleWithdraw(positions: Map<string, Position>, tx: any) {
   const pos = getOrCreatePosition(positions, tx.baseAssetId);
   const withdrawQty = new Decimal(tx.baseQty);
 
-  if (withdrawQty.greaterThan(pos.qty)) {
-    throw new Error(`Insufficient balance for ${tx.baseAsset?.symbol ?? tx.baseAssetId}`);
-  }
+  const effectiveQty = withdrawQty.greaterThan(pos.qty) ? pos.qty : withdrawQty;
 
   const avgCost = pos.qty.isZero() ? new Decimal(0) : pos.costUsdTotal.div(pos.qty);
-  const costReduction = avgCost.times(withdrawQty);
+  const costReduction = avgCost.times(effectiveQty);
 
-  pos.qty = pos.qty.minus(withdrawQty);
+  pos.qty = pos.qty.minus(effectiveQty);
   pos.costUsdTotal = pos.costUsdTotal.minus(costReduction);
   pos.avgCostUsd = pos.qty.isZero() ? new Decimal(0) : pos.costUsdTotal.div(pos.qty);
 

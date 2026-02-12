@@ -1,7 +1,7 @@
 # Crypto Portfolio — Progresso
 
 ## Última atualização
-10/02/2026 12:00
+11/02/2026 20:30
 
 ## ✅ Concluído
 - Projeto Next.js 14 criado com TypeScript e App Router
@@ -283,8 +283,32 @@
   - **Integração na página `/dashboard/buy-bands`** — DCA Adaptativo no topo, separador, bandas manuais abaixo
   - `tsc --noEmit` compila limpo
 
+- **DCA Entry Points (Pontos de Entrada por Zona):**
+  - **Model DcaEntryPoint** — targetPrice, value, preOrderPlaced, purchaseConfirmed, confirmedAt, zoneOrder
+  - **Migration** `add_dca_entry_points` criada (tabela DcaEntryPoint com FK → DcaZone, índices)
+  - **API Endpoints:**
+    - GET/POST `/api/portfolios/:id/dca-zones/:zoneId/entry-points` — listar e gerar pontos automáticos
+    - PATCH/DELETE `/api/portfolios/:id/entry-points/:pointId` — atualizar checkboxes e deletar ponto
+  - **Cálculo de valor corrigido:** POST agora recebe `totalValue` (valorEmDolar real da zona) do frontend
+  - **Capital Disponível integrado na API `dca-strategy`:**
+    - Retorna `capitalDisponivel`, `capitalEmPreOrdens`, `capitalExecutado`
+    - Desconta entry points (preOrderPlaced + purchaseConfirmed) + pré-ordens manuais do capital total
+  - **Frontend — Card Capital Disponível:**
+    - Novo card no painel DCA mostrando capital disponível em verde
+    - Sub-labels mostrando valor em pré-ordens (amarelo) e executado (azul)
+    - Grid responsivo atualizado: 6 colunas (era 5)
+  - **Frontend — Modal de Zona com Entry Points:**
+    - Input "Dividir em quantas entradas" (1-10) + botão "Gerar Pontos"
+    - Lista de entry points com checkboxes: Pré-ordem e Confirme compra
+    - Progresso visual: "X/Y pré-ordens | X/Y compras"
+    - Delete individual por ponto
+    - Cores por status: verde (confirmado), amarelo (pré-ordem), cinza (pendente)
+  - **Schema sincronizado no Neon** via `prisma db push`
+  - Dependência `@radix-ui/react-checkbox` instalada
+  - `tsc --noEmit` + `next build` passando limpo (37 API routes + 9 páginas)
+
 ## 🚧 Em progresso
-- Aplicar migration no banco (precisa DB online ou `prisma migrate deploy`)
+- (nenhum)
 
 ## ⚠️ Problemas encontrados
 - `prisma migrate dev` não roda em terminal não-interativo (Claude Code) — usar direto no terminal ou `db push`
@@ -296,7 +320,7 @@
 3. ~~Admin panel + responsividade + polish~~ ✅
 4. ~~Production polish (UX, backend, DevOps, docs)~~ ✅
 5. ~~DCA Adaptativo — Fase 1 (MVP)~~ ✅
-6. Aplicar migration DcaZone no banco (local ou Neon)
+6. ~~Aplicar migration DcaZone no banco (local ou Neon)~~ ✅
 7. DCA Fase 2: RSI-based auto-adjustment, charting visual das zonas
 8. Dark mode toggle (CSS variables já configuradas — atualmente dark-only)
 9. Testes E2E (Playwright ou Cypress)

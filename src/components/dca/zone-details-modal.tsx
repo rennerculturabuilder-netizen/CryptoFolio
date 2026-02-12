@@ -81,7 +81,7 @@ export function ZoneDetailsModal({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ numberOfEntries: count }),
+          body: JSON.stringify({ numberOfEntries: count, totalValue: zone?.valorEmDolar || 0 }),
         }
       );
       if (!res.ok) throw new Error("Failed to generate entry points");
