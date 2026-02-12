@@ -16,7 +16,6 @@ import {
 import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { ZoneDetailsModal } from "./zone-details-modal";
-import { PreOrdersPanel } from "./pre-orders-panel";
 
 interface DCAZone {
   id: string;
@@ -251,21 +250,6 @@ export function DcaStrategyPanel({ portfolioId }: { portfolioId: string }) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Painel de Pré-ordens */}
-      <PreOrdersPanel
-        portfolioId={portfolioId}
-        asset={selectedAsset}
-        zones={zonasComSaldo.map((z) => ({
-          order: z.order,
-          label: z.label,
-          priceMin: z.priceMin,
-          priceMax: z.priceMax,
-          valorEmDolar: z.valorDisponivel,
-        }))}
-        preOrders={data.preOrders}
-        onUpdate={() => refetch()}
-      />
 
       {/* Zonas DCA */}
       <Card>
