@@ -134,6 +134,36 @@ export async function GET(
 
     const zonasFixas = FIXED_ZONES[asset];
 
+    // Buscar ou criar zonas DCA no banco
+    const zonasDb = await Promise.all(
+      zonasFixas.map(async (zona) => {
+        const existing = await prisma.dcaZone.findFirst({
+          where: {
+            portfolioId,
+            assetSymbol: asset,
+            order: zona.order,
+          },
+        });
+
+        if (existing) return existing;
+
+        // Criar zona no banco
+        return prisma.dcaZone.create({
+          data: {
+            portfolioId,
+            assetSymbol: asset,
+            order: zona.order,
+            priceMin: zona.priceMin,
+            priceMax: zona.priceMax,
+            percentualBase: zona.percentualBase,
+            label: zona.label,
+          },
+        });
+      })
+    );
+
+    const zonaIdMap = new Map(zonasDb.map((z) => [z.order, z.id]));
+
     // Identificar zonas ativas e puladas
     const zonasAtivas = zonasFixas.filter((z) => precoAtual < z.priceMin);
     const zonasPuladas = zonasFixas.filter((z) => precoAtual >= z.priceMax);
@@ -167,6 +197,7 @@ export async function GET(
       const distanciaPercentual = ((zona.priceMin - precoAtual) / precoAtual) * 100;
 
       return {
+        id: zonaIdMap.get(zona.order) || '',
         ...zona,
         percentualAjustado: Math.round(percentualAjustado * 100) / 100,
         valorEmDolar: Math.round(valorEmDolar * 100) / 100,

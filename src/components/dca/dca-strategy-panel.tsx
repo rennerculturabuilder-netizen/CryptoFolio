@@ -19,6 +19,7 @@ import { ZoneDetailsModal } from "./zone-details-modal";
 import { PreOrdersPanel } from "./pre-orders-panel";
 
 interface DCAZone {
+  id: string;
   order: number;
   priceMin: number;
   priceMax: number;
@@ -410,6 +411,8 @@ export function DcaStrategyPanel({ portfolioId }: { portfolioId: string }) {
       <ZoneDetailsModal
         open={detailsModalOpen}
         onOpenChange={setDetailsModalOpen}
+        portfolioId={portfolioId}
+        zoneId={selectedZone?.id || ""}
         zone={selectedZone}
       />
     </div>
