@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock, Target, Plus, Trash2, HelpCircle, X } from "lucide-react";
+import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock, Target, Plus, Trash2, HelpCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { toast } from "sonner";
 
