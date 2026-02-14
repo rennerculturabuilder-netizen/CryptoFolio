@@ -24,12 +24,6 @@ export default function BuyBandsPage() {
 
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">DCA Adaptativo</h1>
-      </div>
-
-      {/* DCA Adaptativo */}
       {selectedId && (
         <DcaStrategyPanelV2
           portfolioId={selectedId}

@@ -12,7 +12,7 @@ const FIXED_ZONES: Record<string, Array<{
   label: string;
 }>> = {
   BTC: [
-    { order: 1, priceMin: 65000, priceMax: 80000, percentualBase: 15, label: 'Zona 1' },
+    { order: 1, priceMin: 65000, priceMax: 70000, percentualBase: 15, label: 'Zona 1' },
     { order: 2, priceMin: 55000, priceMax: 65000, percentualBase: 25, label: 'Zona 2' },
     { order: 3, priceMin: 50000, priceMax: 55000, percentualBase: 30, label: 'Zona 3' },
     { order: 4, priceMin: 40000, priceMax: 50000, percentualBase: 25, label: 'Zona 4' },
@@ -34,8 +34,18 @@ const FIXED_ZONES: Record<string, Array<{
   ],
 };
 
+// Cache de preços em memória (evita rate limit CoinGecko)
+const priceCache = new Map<string, { price: number; timestamp: number }>();
+const CACHE_TTL = 60_000; // 60 segundos
+
 async function getCryptoPrice(symbol: string): Promise<number> {
-  // Buscar último preço do snapshot
+  // 1. Verificar cache em memória
+  const cached = priceCache.get(symbol);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.price;
+  }
+
+  // 2. Buscar último preço do snapshot no banco
   const latestPrice = await prisma.priceSnapshot.findFirst({
     where: {
       asset: { symbol },
@@ -44,10 +54,12 @@ async function getCryptoPrice(symbol: string): Promise<number> {
   });
 
   if (latestPrice) {
-    return parseFloat(latestPrice.price.toString());
+    const price = parseFloat(latestPrice.price.toString());
+    priceCache.set(symbol, { price, timestamp: Date.now() });
+    return price;
   }
 
-  // Fallback: buscar da API CoinGecko
+  // 3. Fallback: buscar da API CoinGecko
   const coinIds: Record<string, string> = {
     BTC: 'bitcoin',
     ETH: 'ethereum',
@@ -56,11 +68,18 @@ async function getCryptoPrice(symbol: string): Promise<number> {
 
   try {
     const res = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds[symbol]}&vs_currencies=usd`
+      `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds[symbol]}&vs_currencies=usd`,
+      { next: { revalidate: 60 } }
     );
     const data = await res.json();
-    return data[coinIds[symbol]]?.usd || 0;
+    const price = data[coinIds[symbol]]?.usd || 0;
+    if (price > 0) {
+      priceCache.set(symbol, { price, timestamp: Date.now() });
+    }
+    return price;
   } catch {
+    // Se falhou e tem cache antigo, usar ele
+    if (cached) return cached.price;
     return 0;
   }
 }
@@ -134,7 +153,26 @@ export async function GET(
           },
         });
 
-        if (existing) return existing;
+        if (existing) {
+          // Sincronizar valores se FIXED_ZONES mudou
+          const needsSync =
+            parseFloat(existing.priceMin.toString()) !== zona.priceMin ||
+            parseFloat(existing.priceMax.toString()) !== zona.priceMax ||
+            parseFloat(existing.percentualBase.toString()) !== zona.percentualBase;
+
+          if (needsSync) {
+            return prisma.dcaZone.update({
+              where: { id: existing.id },
+              data: {
+                priceMin: zona.priceMin,
+                priceMax: zona.priceMax,
+                percentualBase: zona.percentualBase,
+                label: zona.label,
+              },
+            });
+          }
+          return existing;
+        }
 
         // Criar zona no banco
         return prisma.dcaZone.create({
@@ -153,57 +191,107 @@ export async function GET(
 
     const zonaIdMap = new Map(zonasDb.map((z) => [z.order, z.id]));
 
-    // Identificar zonas ativas (preço já caiu abaixo)
-    const zonasAtivas = zonasFixas.filter((z) => precoAtual < z.priceMin);
-    
-    // Zonas aguardando (preço ainda está acima)
-    const zonasAguardando = zonasFixas.filter((z) => precoAtual > z.priceMax);
+    // Buscar todos os entry points do portfolio + asset
+    const zoneIds = zonasDb.map((z) => z.id);
+    const entryPoints = await prisma.dcaEntryPoint.findMany({
+      where: { dcaZoneId: { in: zoneIds } },
+    });
 
-    // Calcular redistribuição (apenas das zonas aguardando pro capital das ativas)
-    const percentualAtivo = zonasAtivas.reduce((sum, z) => sum + z.percentualBase, 0);
-    const percentualAguardando = zonasAguardando.reduce((sum, z) => sum + z.percentualBase, 0);
+    // Auto-executar: entry points com pré-ordem cujo preço alvo foi atingido
+    const epsParaExecutar = entryPoints.filter(
+      (ep) => ep.preOrderPlaced && !ep.purchaseConfirmed && parseFloat(ep.targetPrice.toString()) >= precoAtual
+    );
 
-    const zonasCalculadas = zonasFixas.map((zona) => {
-      const isAtiva = zonasAtivas.some((z) => z.order === zona.order);
-      const isAguardando = zonasAguardando.some((z) => z.order === zona.order);
+    if (epsParaExecutar.length > 0) {
+      await prisma.dcaEntryPoint.updateMany({
+        where: { id: { in: epsParaExecutar.map((ep) => ep.id) } },
+        data: { purchaseConfirmed: true, confirmedAt: new Date() },
+      });
+      // Atualizar em memória pra refletir na resposta
+      for (const ep of epsParaExecutar) {
+        ep.purchaseConfirmed = true;
+        ep.confirmedAt = new Date();
+      }
+    }
 
-      let percentualAjustado = zona.percentualBase;
-      let status: 'ATIVA' | 'PULADA' | 'ATUAL' | 'AGUARDANDO' = 'ATIVA';
+    // Agrupar entry points por zona
+    const entryPointsByZone = new Map<string, typeof entryPoints>();
+    for (const ep of entryPoints) {
+      const existing = entryPointsByZone.get(ep.dcaZoneId) || [];
+      existing.push(ep);
+      entryPointsByZone.set(ep.dcaZoneId, existing);
+    }
 
-      if (isAguardando) {
-        // Preço ainda está acima desta zona (aguardando cair)
-        percentualAjustado = 0;
+    // === Classificar status de cada zona ===
+    // EXECUTADA: tem compras confirmadas (purchaseConfirmed)
+    // PERDIDA: preço caiu abaixo da zona e não tem compras confirmadas
+    // ATUAL: preço está dentro da zona
+    // AGUARDANDO: preço ainda está acima da zona
+    const zonasComStatus = zonasFixas.map((zona) => {
+      const zoneId = zonaIdMap.get(zona.order) || '';
+      const zoneEps = entryPointsByZone.get(zoneId) || [];
+      const hasConfirmedPurchases = zoneEps.some((ep) => ep.purchaseConfirmed);
+
+      let status: 'EXECUTADA' | 'PERDIDA' | 'ATUAL' | 'AGUARDANDO';
+
+      if (precoAtual < zona.priceMin) {
+        // Preço caiu abaixo desta zona
+        status = hasConfirmedPurchases ? 'EXECUTADA' : 'PERDIDA';
+      } else if (precoAtual >= zona.priceMin && precoAtual <= zona.priceMax) {
+        status = 'ATUAL';
+      } else {
         status = 'AGUARDANDO';
-      } else if (isAtiva && percentualAguardando > 0) {
-        // Redistribuir capital das zonas aguardando proporcionalmente nas ativas
-        const proporcao = zona.percentualBase / percentualAtivo;
-        percentualAjustado = zona.percentualBase + proporcao * percentualAguardando;
       }
 
-      // Zona atual (preço dentro do range)
-      if (precoAtual >= zona.priceMin && precoAtual < zona.priceMax) {
-        status = 'ATUAL';
+      return { ...zona, id: zoneId, status, zoneEps };
+    });
+
+    // === Redistribuição ===
+    // % das zonas PERDIDAS vai proporcionalmente pras ATUAL + AGUARDANDO
+    const zonasPerdidas = zonasComStatus.filter((z) => z.status === 'PERDIDA');
+    const zonasRecebeRedist = zonasComStatus.filter((z) => z.status === 'ATUAL' || z.status === 'AGUARDANDO');
+    const percentualPerdido = zonasPerdidas.reduce((sum, z) => sum + z.percentualBase, 0);
+    const percentualRecebeRedist = zonasRecebeRedist.reduce((sum, z) => sum + z.percentualBase, 0);
+
+    const zonasCalculadas = zonasComStatus.map((zona) => {
+      let percentualAjustado = zona.percentualBase;
+
+      if (zona.status === 'PERDIDA') {
+        percentualAjustado = 0;
+      } else if ((zona.status === 'ATUAL' || zona.status === 'AGUARDANDO') && percentualPerdido > 0 && percentualRecebeRedist > 0) {
+        const proporcao = zona.percentualBase / percentualRecebeRedist;
+        percentualAjustado = zona.percentualBase + proporcao * percentualPerdido;
       }
 
       const valorEmDolar = (totalUsd * percentualAjustado) / 100;
       const distanciaPercentual = ((zona.priceMin - precoAtual) / precoAtual) * 100;
 
+      // Cap priceMax no preço atual (entry points nunca acima do preço atual)
+      const priceMaxCapped = Math.min(zona.priceMax, precoAtual);
+
+      // Calcular valor comprometido nesta zona (pré-ordens + compras)
+      const zoneEps = entryPointsByZone.get(zona.id) || [];
+      const valorPreOrdens = zoneEps
+        .filter((ep) => ep.preOrderPlaced && !ep.purchaseConfirmed)
+        .reduce((sum, ep) => sum + parseFloat(ep.value.toString()), 0);
+      const valorComprado = zoneEps
+        .filter((ep) => ep.purchaseConfirmed)
+        .reduce((sum, ep) => sum + parseFloat(ep.value.toString()), 0);
+
       return {
-        id: zonaIdMap.get(zona.order) || '',
-        ...zona,
+        id: zona.id,
+        order: zona.order,
+        priceMin: zona.priceMin,
+        priceMax: priceMaxCapped,
+        percentualBase: zona.percentualBase,
         percentualAjustado: Math.round(percentualAjustado * 100) / 100,
         valorEmDolar: Math.round(valorEmDolar * 100) / 100,
-        status,
+        valorPreOrdens: Math.round(valorPreOrdens * 100) / 100,
+        valorComprado: Math.round(valorComprado * 100) / 100,
+        label: zona.label,
+        status: zona.status,
         distanciaPercentual: Math.round(distanciaPercentual * 10) / 10,
       };
-    });
-
-    // Buscar todos os entry points do portfolio + asset
-    const zoneIds = zonasDb.map((z) => z.id);
-    const entryPoints = await prisma.dcaEntryPoint.findMany({
-      where: {
-        dcaZoneId: { in: zoneIds },
-      },
     });
 
     // Calcular capital já alocado (pré-ordens + compras confirmadas)
@@ -216,16 +304,10 @@ export async function GET(
 
     const capitalDisponivel = totalUsd - capitalAlocado;
 
-    // Buscar pré-ordens ativas do portfolio + asset (legacy - pode remover depois)
+    // Buscar pré-ordens ativas do portfolio + asset (legacy)
     const preOrders = await prisma.preOrder.findMany({
-      where: {
-        portfolioId,
-        assetSymbol: asset,
-        active: true,
-      },
-      orderBy: {
-        zoneOrder: 'asc',
-      },
+      where: { portfolioId, assetSymbol: asset, active: true },
+      orderBy: { zoneOrder: 'asc' },
     });
 
     const preOrdersFormatted = preOrders.map((po) => ({
@@ -237,8 +319,9 @@ export async function GET(
       active: po.active,
     }));
 
+    const zonasPerdidasCount = zonasCalculadas.filter((z) => z.status === 'PERDIDA').length;
     const zonasAguardandoCount = zonasCalculadas.filter((z) => z.status === 'AGUARDANDO').length;
-    const zonasAtivasCount = zonasCalculadas.filter((z) => z.status === 'ATIVA').length;
+    const zonasAtualCount = zonasCalculadas.filter((z) => z.status === 'ATUAL').length;
 
     return NextResponse.json({
       portfolioId,
@@ -247,8 +330,8 @@ export async function GET(
       capitalTotal: totalUsd,
       capitalDisponivel: Math.max(0, capitalDisponivel),
       capitalAlocado,
-      zonasAtivas: zonasAtivasCount,
-      zonasPuladas: 0, // Não usamos mais este status
+      zonasAtivas: zonasAtualCount,
+      zonasPerdidas: zonasPerdidasCount,
       zonasAguardando: zonasAguardandoCount,
       zonas: zonasCalculadas,
       preOrders: preOrdersFormatted,

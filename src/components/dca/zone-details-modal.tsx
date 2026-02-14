@@ -33,6 +33,7 @@ type ZoneDetailsModalProps = {
   onOpenChange: (open: boolean) => void;
   portfolioId: string;
   zoneId: string;
+  currentPrice: number;
   zone: {
     order: number;
     priceMin: number;
@@ -51,6 +52,7 @@ export function ZoneDetailsModal({
   onOpenChange,
   portfolioId,
   zoneId,
+  currentPrice,
   zone,
 }: ZoneDetailsModalProps) {
   const [numberOfEntries, setNumberOfEntries] = useState(5);
@@ -81,7 +83,7 @@ export function ZoneDetailsModal({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ numberOfEntries: count, totalValue: zone?.valorEmDolar || 0 }),
+          body: JSON.stringify({ numberOfEntries: count, zoneValueUsd: zone?.valorEmDolar || 0, currentPrice }),
         }
       );
       if (!res.ok) throw new Error("Failed to generate entry points");
@@ -211,7 +213,7 @@ export function ZoneDetailsModal({
                   <span className="text-xs">Alocação</span>
                 </div>
                 <p className="text-sm font-medium">
-                  {zone.percentualBase}% → {zone.percentualAjustado}%
+                  {zone.percentualBase}%
                 </p>
               </CardContent>
             </Card>

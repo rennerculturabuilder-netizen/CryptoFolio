@@ -319,21 +319,13 @@ export function DcaStrategyPanel({ portfolioId }: { portfolioId: string }) {
                       ${formatPrice(zona.priceMin)} - ${formatPrice(zona.priceMax)}
                     </p>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-xs text-muted-foreground">
                           Alocação Base
                         </p>
                         <p className="text-sm font-medium">
                           {zona.percentualBase}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Alocação Ajustada
-                        </p>
-                        <p className="text-sm font-bold text-green-400">
-                          {zona.percentualAjustado}%
                         </p>
                       </div>
                       <div>
@@ -417,6 +409,7 @@ export function DcaStrategyPanel({ portfolioId }: { portfolioId: string }) {
         onOpenChange={setDetailsModalOpen}
         portfolioId={portfolioId}
         zoneId={selectedZone?.id || ""}
+        currentPrice={data?.precoAtual || 0}
         zone={selectedZone}
       />
     </div>

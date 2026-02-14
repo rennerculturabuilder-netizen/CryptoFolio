@@ -70,7 +70,6 @@ export function DcaZonesDisplay({ zones, onEdit, onDelete }: DcaZonesDisplayProp
                 <TableHead className="text-muted-foreground font-medium">Faixa de Preço</TableHead>
                 <TableHead className="text-center text-muted-foreground font-medium">Status</TableHead>
                 <TableHead className="text-right text-muted-foreground font-medium">% Base</TableHead>
-                <TableHead className="text-right text-muted-foreground font-medium">% Ajustado</TableHead>
                 <TableHead className="text-right text-muted-foreground font-medium">Valor USD</TableHead>
                 <TableHead className="text-right text-muted-foreground font-medium">Distância</TableHead>
                 <TableHead className="text-right text-muted-foreground font-medium w-[100px]">Ações</TableHead>
@@ -119,14 +118,6 @@ export function DcaZonesDisplay({ zones, onEdit, onDelete }: DcaZonesDisplayProp
                     {zone.percentualBase}%
                   </TableCell>
 
-                  {/* % Ajustado */}
-                  <TableCell className="text-right font-mono text-sm">
-                    {zone.status === "ATIVA" ? (
-                      <span className="text-emerald-400">{zone.percentualAjustado}%</span>
-                    ) : (
-                      <span className="text-muted-foreground">0%</span>
-                    )}
-                  </TableCell>
 
                   {/* Valor USD */}
                   <TableCell className="text-right font-mono text-sm">

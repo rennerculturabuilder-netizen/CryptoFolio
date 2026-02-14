@@ -5,6 +5,7 @@ import { z } from "zod";
 const createEntryPointsSchema = z.object({
   numberOfEntries: z.number().min(1).max(10),
   zoneValueUsd: z.number().optional(),
+  currentPrice: z.number().optional(),
 });
 
 /**
@@ -18,7 +19,7 @@ export async function POST(
   try {
     const { id: portfolioId, zoneId } = params;
     const body = await req.json();
-    const { numberOfEntries, zoneValueUsd } = createEntryPointsSchema.parse(body);
+    const { numberOfEntries, zoneValueUsd, currentPrice } = createEntryPointsSchema.parse(body);
 
     // Buscar zona DCA
     const zone = await prisma.dcaZone.findUnique({
@@ -45,9 +46,10 @@ export async function POST(
       where: { dcaZoneId: zoneId },
     });
 
-    // Calcular distribuição de preços
+    // Calcular distribuição de preços (nunca acima do preço atual)
     const priceMin = parseFloat(zone.priceMin.toString());
-    const priceMax = parseFloat(zone.priceMax.toString());
+    const rawPriceMax = parseFloat(zone.priceMax.toString());
+    const priceMax = currentPrice ? Math.min(rawPriceMax, currentPrice) : rawPriceMax;
     const priceRange = priceMax - priceMin;
     const priceStep = numberOfEntries > 1 ? priceRange / (numberOfEntries - 1) : 0;
 

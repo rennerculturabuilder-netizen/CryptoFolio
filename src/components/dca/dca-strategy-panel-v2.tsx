@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock, Target, Plus, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RefreshCw, TrendingDown, TrendingUp, AlertCircle, Clock, Target, Plus, Trash2, HelpCircle, X } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -36,8 +42,10 @@ interface DCAZone {
   percentualBase: number;
   percentualAjustado: number;
   valorEmDolar: number;
+  valorPreOrdens: number;
+  valorComprado: number;
   label: string;
-  status: 'ATIVA' | 'PULADA' | 'ATUAL' | 'AGUARDANDO';
+  status: 'ATUAL' | 'AGUARDANDO' | 'PERDIDA' | 'EXECUTADA';
   distanciaPercentual: number;
 }
 
@@ -58,7 +66,7 @@ interface DCAStrategy {
   capitalDisponivel: number;
   capitalAlocado: number;
   zonasAtivas: number;
-  zonasPuladas: number;
+  zonasPerdidas: number;
   zonasAguardando: number;
   zonas: DCAZone[];
   preOrders: PreOrder[];
@@ -69,11 +77,15 @@ function ZoneEntryPoints({
   portfolioId,
   zoneId,
   zoneValue,
+  currentPrice,
+  assetSymbol,
   onUpdate,
 }: {
   portfolioId: string;
   zoneId: string;
   zoneValue: number;
+  currentPrice: number;
+  assetSymbol: string;
   onUpdate: () => void;
 }) {
   const [numberOfEntries, setNumberOfEntries] = useState(5);
@@ -104,9 +116,10 @@ function ZoneEntryPoints({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             numberOfEntries: count,
             zoneValueUsd: zoneValue,
+            currentPrice,
           }),
         }
       );
@@ -263,7 +276,7 @@ function ZoneEntryPoints({
                 {/* Grid com informações */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Preço Alvo BTC</p>
+                    <p className="text-xs text-muted-foreground mb-1">Preço Alvo {assetSymbol}</p>
                     <p className="text-sm font-mono font-bold">
                       {targetPrice > 0 ? `$${targetPrice.toFixed(2)}` : 'N/A'}
                     </p>
@@ -275,9 +288,9 @@ function ZoneEntryPoints({
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Quantidade BTC</p>
+                    <p className="text-xs text-muted-foreground mb-1">Quantidade {assetSymbol}</p>
                     <p className="text-sm font-mono font-bold">
-                      {btcQty > 0 ? `${btcQty.toFixed(8)} BTC` : 'N/A'}
+                      {btcQty > 0 ? `${btcQty.toFixed(8)} ${assetSymbol}` : 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -364,9 +377,21 @@ function ZoneEntryPoints({
   );
 }
 
+const GUIDE_STORAGE_KEY = "dca-guide-seen";
+
 export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
   const [selectedAsset, setSelectedAsset] = useState<string>("BTC");
   const [expandedZoneId, setExpandedZoneId] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
+
+  // Auto-show na primeira visita
+  useEffect(() => {
+    const seen = localStorage.getItem(GUIDE_STORAGE_KEY);
+    if (!seen) {
+      setShowGuide(true);
+      localStorage.setItem(GUIDE_STORAGE_KEY, "true");
+    }
+  }, []);
 
   const { data, isLoading, refetch, isFetching } = useQuery<DCAStrategy>({
     queryKey: ["dca-strategy", portfolioId, selectedAsset],
@@ -381,14 +406,14 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "ATIVA":
-        return "bg-green-500/20 text-green-400 border-green-500/30";
       case "ATUAL":
         return "bg-blue-500/20 text-blue-400 border-blue-500/30";
       case "AGUARDANDO":
         return "bg-purple-500/20 text-purple-400 border-purple-500/30";
-      case "PULADA":
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+      case "PERDIDA":
+        return "bg-red-500/20 text-red-400 border-red-500/30";
+      case "EXECUTADA":
+        return "bg-green-500/20 text-green-400 border-green-500/30";
       default:
         return "bg-gray-500/20 text-gray-400";
     }
@@ -396,14 +421,14 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "ATIVA":
-        return <TrendingDown className="h-4 w-4" />;
       case "ATUAL":
         return <AlertCircle className="h-4 w-4" />;
       case "AGUARDANDO":
         return <Clock className="h-4 w-4" />;
-      case "PULADA":
+      case "PERDIDA":
         return <TrendingUp className="h-4 w-4" />;
+      case "EXECUTADA":
+        return <TrendingDown className="h-4 w-4" />;
       default:
         return null;
     }
@@ -432,15 +457,12 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
     );
   }
 
-  // Calcular saldos disponíveis por zona (descontando pré-ordens)
+  // Calcular saldos disponíveis por zona (descontando pré-ordens e compras dos entry points)
   const zonasComSaldo = data.zonas.map((zona) => {
-    const zonePreOrders = data.preOrders.filter(
-      (po) => po.zoneOrder === zona.order && po.active
-    );
-    const preOrderValue = zonePreOrders.reduce((acc, po) => acc + po.value, 0);
+    const comprometido = (zona.valorPreOrdens || 0) + (zona.valorComprado || 0);
     return {
       ...zona,
-      valorDisponivel: zona.valorEmDolar - preOrderValue,
+      valorDisponivel: zona.valorEmDolar - comprometido,
     };
   });
 
@@ -455,6 +477,15 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowGuide(true)}
+            className="gap-2"
+          >
+            <HelpCircle className="h-4 w-4" />
+            Como funciona
+          </Button>
           <Select value={selectedAsset} onValueChange={setSelectedAsset}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -536,12 +567,12 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Zonas Puladas
+              Zonas Perdidas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-400">
-              {data.zonasPuladas}
+            <div className="text-2xl font-bold text-red-400">
+              {data.zonasPerdidas}
             </div>
           </CardContent>
         </Card>
@@ -570,9 +601,7 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
         </CardHeader>
         <CardContent className="space-y-4">
           {zonasComSaldo.map((zona) => {
-            const hasPreOrders = data.preOrders.some(
-              (po) => po.zoneOrder === zona.order && po.active
-            );
+            const hasPreOrders = (zona.valorPreOrdens || 0) > 0;
 
             const isExpanded = expandedZoneId === zona.id;
 
@@ -606,41 +635,33 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        ${formatPrice(zona.priceMin)} - ${formatPrice(zona.priceMax)}
+                      <p className="text-base font-semibold text-foreground/80 mb-4 tabular-nums">
+                        ${formatPrice(zona.priceMin)} — ${formatPrice(zona.priceMax)}
                       </p>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-3 gap-6">
                         <div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground mb-1">
                             Alocação Base
                           </p>
-                          <p className="text-sm font-medium">
+                          <p className="text-2xl font-bold tabular-nums">
                             {zona.percentualBase}%
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">
-                            Alocação Ajustada
+                          <p className="text-xs text-muted-foreground mb-1">
+                            Valor a Investir
                           </p>
-                          <p className="text-sm font-bold text-green-400">
-                            {zona.percentualAjustado}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            Valor Disponível
-                          </p>
-                          <p className="text-sm font-bold">
+                          <p className="text-2xl font-bold text-blue-400 tabular-nums">
                             ${formatPrice(zona.valorDisponivel)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground mb-1">
                             Distância
                           </p>
                           <p
-                            className={`text-sm font-medium ${
+                            className={`text-2xl font-bold tabular-nums ${
                               zona.distanciaPercentual != null && zona.distanciaPercentual < 0
                                 ? "text-green-400"
                                 : zona.distanciaPercentual != null && zona.distanciaPercentual < 10
@@ -667,9 +688,15 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
                         </p>
                       )}
 
-                      {zona.status === "PULADA" && (
-                        <p className="text-xs text-gray-400 mt-2">
-                          💡 Alocação redistribuída nas zonas ativas
+                      {zona.status === "PERDIDA" && (
+                        <p className="text-xs text-red-400 mt-2">
+                          Zona perdida — alocação redistribuída nas zonas restantes
+                        </p>
+                      )}
+
+                      {zona.status === "EXECUTADA" && (
+                        <p className="text-xs text-green-400 mt-2">
+                          Zona executada com sucesso
                         </p>
                       )}
                     </div>
@@ -682,6 +709,8 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
                     portfolioId={portfolioId}
                     zoneId={zona.id}
                     zoneValue={zona.valorEmDolar}
+                    currentPrice={data.precoAtual}
+                    assetSymbol={selectedAsset}
                     onUpdate={() => refetch()}
                   />
                 )}
@@ -691,33 +720,107 @@ export function DcaStrategyPanelV2({ portfolioId }: { portfolioId: string}) {
         </CardContent>
       </Card>
 
-      {/* Explicação */}
-      <Card className="bg-blue-500/5 border-blue-500/20">
-        <CardContent className="pt-6">
-          <div className="flex gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                <strong className="text-foreground">Como funciona:</strong> As
-                zonas de preço são fixas, mas a alocação se adapta automaticamente.
+      {/* Modal "Como funciona" */}
+      <Dialog open={showGuide} onOpenChange={setShowGuide}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Target className="h-5 w-5 text-blue-400" />
+              Como funciona o DCA Adaptativo
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 text-sm">
+            {/* O que é */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-2">O que é DCA Adaptativo?</h3>
+              <p className="text-muted-foreground">
+                O DCA (Dollar Cost Average) Adaptativo divide seu capital em <strong className="text-foreground">zonas de preço</strong> pré-definidas.
+                Conforme o preço do ativo cai, você compra em faixas diferentes, garantindo um preço médio otimizado.
+                A alocação se adapta automaticamente conforme o mercado se move.
               </p>
-              <p>
-                <strong className="text-purple-400">Zonas Aguardando:</strong> O
-                preço ainda não chegou nessa faixa. Quando chegar, a zona se torna ativa.
+            </div>
+
+            {/* Zonas de Compra */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-2">Zonas de Compra</h3>
+              <p className="text-muted-foreground mb-3">
+                Cada ativo tem 5 zonas de preço com percentuais de alocação do seu capital em stablecoins:
               </p>
-              <p>
-                Quando o preço ultrapassa uma zona (zona &quot;pulada&quot;), o capital é
-                redistribuído proporcionalmente nas zonas restantes.
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">ATUAL</Badge>
+                  <span className="text-muted-foreground">O preço do ativo está dentro desta faixa agora.</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">AGUARDANDO</Badge>
+                  <span className="text-muted-foreground">O preço ainda não chegou nesta faixa. Quando chegar, a zona se torna ativa.</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-red-500/20 text-red-400 border-red-500/30">PERDIDA</Badge>
+                  <span className="text-muted-foreground">O preço passou por esta zona sem que você tenha comprado. O capital é redistribuído.</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">EXECUTADA</Badge>
+                  <span className="text-muted-foreground">Você comprou nesta zona com sucesso.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Redistribuição */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-2">Redistribuição Inteligente</h3>
+              <p className="text-muted-foreground">
+                Se uma zona for <strong className="text-red-400">perdida</strong> (o preço caiu sem você comprar),
+                o percentual dessa zona é redistribuído proporcionalmente entre as zonas restantes
+                (atual + aguardando). Assim, seu capital nunca fica parado — ele vai pra onde ainda tem oportunidade.
               </p>
-              <p>
-                <strong className="text-yellow-400">Pré-ordens:</strong> Configure
-                ordens limitadas no livro de ofertas da exchange para capturar preços rapidamente.
-                O valor é descontado do saldo disponível da zona.
+            </div>
+
+            {/* Pontos de Entrada */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-2">Pontos de Entrada</h3>
+              <p className="text-muted-foreground mb-2">
+                Dentro de cada zona, você pode gerar <strong className="text-foreground">pontos de entrada</strong> —
+                subdivisões do valor da zona em preços-alvo específicos. Exemplo: Zona 1 com $150 pode virar 5 pontos de $30 cada,
+                em preços diferentes dentro da faixa.
+              </p>
+              <p className="text-muted-foreground">
+                Cada ponto mostra: preço alvo, valor em USD, quantidade estimada do ativo e percentual da zona.
+              </p>
+            </div>
+
+            {/* Pré-ordens */}
+            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+              <h3 className="font-semibold text-yellow-400 mb-2">Pré-ordens na Corretora</h3>
+              <p className="text-muted-foreground mb-2">
+                Este sistema <strong className="text-foreground">não executa ordens automaticamente</strong> na sua corretora.
+                Ele serve como planejamento e controle.
+              </p>
+              <p className="text-muted-foreground mb-2">
+                O fluxo correto é:
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                <li>Gere os pontos de entrada na zona desejada</li>
+                <li>Vá até sua corretora (Binance, Bybit, etc.) e <strong className="text-foreground">coloque ordens limitadas</strong> nos preços indicados</li>
+                <li>Marque o checkbox <strong className="text-yellow-400">&quot;Pré-ordem realizada&quot;</strong> para reservar o valor no seu saldo</li>
+                <li>Quando o preço do ativo atingir seu alvo, o sistema marca automaticamente como <strong className="text-green-400">&quot;Compra confirmada&quot;</strong></li>
+              </ol>
+            </div>
+
+            {/* Capital */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-2">Capital e Saldo</h3>
+              <p className="text-muted-foreground">
+                O <strong className="text-foreground">Capital Total</strong> é a soma das suas stablecoins (USDT, USDC).
+                O <strong className="text-blue-400">Capital Disponível</strong> desconta os valores já comprometidos
+                em pré-ordens e compras confirmadas. O <strong className="text-foreground">Valor a Investir</strong> de cada zona
+                é calculado com base no percentual de alocação sobre o capital total.
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
