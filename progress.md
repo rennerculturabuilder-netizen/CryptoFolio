@@ -1,7 +1,7 @@
 # Crypto Portfolio — Progresso
 
 ## Última atualização
-11/02/2026 20:30
+14/02/2026 --:--
 
 ## ✅ Concluído
 - Projeto Next.js 14 criado com TypeScript e App Router
@@ -306,6 +306,43 @@
   - **Schema sincronizado no Neon** via `prisma db push`
   - Dependência `@radix-ui/react-checkbox` instalada
   - `tsc --noEmit` + `next build` passando limpo (37 API routes + 9 páginas)
+
+- **Página de Gráficos (/dashboard/charts) — TradingView Advanced Chart Widget:**
+  - Página `/dashboard/charts` com widget TradingView completo embutido
+  - Menu lateral: novo item "Gráficos" com ícone CandlestickChart
+  - **Funcionalidades do widget:**
+    - Gráfico avançado com candlestick, volume, indicadores (RSI, MACD pré-carregados)
+    - Ferramentas de desenho completas (linhas, Fibonacci, tendência, etc.)
+    - Busca de qualquer ativo diretamente no widget (allow_symbol_change)
+    - Watchlist integrada (favoritos do usuário ou padrão BTC/ETH/SOL)
+    - Popup mode para tela cheia
+    - Timezone São Paulo, locale pt-BR, dark theme
+  - **Controles customizados:**
+    - Buscador de moedas com dropdown (12 pares populares BINANCE)
+    - Seletor de intervalo (1m, 5m, 15m, 30m, 1H, 4H, 1D, 1S, 1M)
+    - Botões de acesso rápido aos 6 pares mais populares (desktop)
+    - Sistema de favoritos com localStorage (estrela amarela toggle)
+    - Dropdown de busca com seções: Favoritos + Populares + busca textual
+  - Build passando limpo (37 API routes + 10 páginas)
+
+- **Bitcoin Lab — Dashboard de Análise On-Chain:**
+  - **Página `/dashboard/bitcoin-lab`** com 7 indicadores on-chain de fundo
+  - **Indicadores:** MVRV Ratio, STH MVRV, Mayer Multiple, LTH MVRV, LTH SOPR, AVIV Ratio, Preço vs Realizado
+  - **Fontes de dados:** BGeometrics (cache 1h) + CoinGecko (preço + SMA200)
+  - **API Route** `/api/bitcoin-lab` — proxy paralelo (Promise.all) + cálculo de status + price levels
+  - **Types + Config** em `src/lib/bitcoin-lab/` — tipos, thresholds, zonas, cores por status
+  - **Service** `src/lib/services/bgeometrics.ts` — fetch com cache in-memory 1h, graceful degradation
+  - **Componentes:**
+    - `ScoreHeader` — preço BTC + change 24h + contagem de sinais ativos + badge geral
+    - `IndicatorCard` — badge status + valor colorido + ZoneBar + price levels + tooltip descrição
+    - `IndicatorGrid` — grid responsivo 2 colunas com skeleton loading
+    - `StatusBadge` — EXTREMO (verde) / FORTE (laranja) / OBSERVAÇÃO (amber) / NORMAL (cinza)
+    - `ZoneBar` — barra de zonas coloridas com seta indicadora animada
+    - `BtcChart` — TradingView Lightweight Charts v5 com candlestick OHLC real (CoinGecko) + price lines tracejadas por indicador
+  - **Tabs:** "Sinais de Fundo" (ativo) / "Sinais de Topo" (em breve, disabled)
+  - **React Query** com staleTime 5min + refetch automático
+  - **Nav:** item "Bitcoin Lab" adicionado na sidebar com ícone FlaskConical
+  - Build passando limpo (38 API routes + 11 páginas)
 
 ## 🚧 Em progresso
 - (nenhum)

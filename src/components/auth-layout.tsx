@@ -50,6 +50,8 @@ import {
   Bell,
   CheckCheck,
   ExternalLink,
+  CandlestickChart,
+  FlaskConical,
 } from "lucide-react";
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -144,6 +146,18 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
       label: "DCA",
       icon: Target,
       active: pathname === "/dashboard/buy-bands",
+    },
+    {
+      href: "/dashboard/charts",
+      label: "Gráficos",
+      icon: CandlestickChart,
+      active: pathname === "/dashboard/charts",
+    },
+    {
+      href: "/dashboard/bitcoin-lab",
+      label: "Bitcoin Lab",
+      icon: FlaskConical,
+      active: pathname === "/dashboard/bitcoin-lab",
     },
     ...(isAdmin
       ? [
