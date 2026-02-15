@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -52,14 +52,36 @@ import {
   ExternalLink,
   CandlestickChart,
   FlaskConical,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const isAdmin = session?.user?.role === "admin";
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const { portfolios, selectedId, setSelectedId, selected } = usePortfolio();
+
+  // Persist collapsed state
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved === "true") setCollapsed(true);
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      localStorage.setItem("sidebar-collapsed", String(!prev));
+      return !prev;
+    });
+  };
   const queryClient = useQueryClient();
 
   // Transaction modal state
@@ -411,36 +433,70 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         <aside
           className={`${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } fixed md:translate-x-0 md:static z-30 w-60 border-r border-border/30 bg-surface-1/50 backdrop-blur-xl min-h-[calc(100vh-3.5rem)] p-4 transition-transform duration-200`}
+          } fixed md:translate-x-0 md:static z-30 ${
+            collapsed ? "md:w-16" : "md:w-60"
+          } w-60 border-r border-border/30 bg-surface-1/50 backdrop-blur-xl min-h-[calc(100vh-3.5rem)] transition-all duration-200 flex flex-col`}
         >
-          <nav className="space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href + item.label}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                  item.active
-                    ? "bg-primary/10 text-primary border border-primary/20"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            ))}
+          {/* Collapse toggle — desktop only */}
+          <div className={`hidden md:flex p-4 pb-0 ${collapsed ? "justify-center" : "justify-end"}`}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={toggleCollapsed}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
+          <nav className="space-y-1 p-4 pt-2 flex-1">
+            <TooltipProvider delayDuration={0}>
+              {navItems.map((item) => (
+                <Tooltip key={item.href + item.label}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                        collapsed ? "md:justify-center md:px-0" : ""
+                      } ${
+                        item.active
+                          ? "bg-primary/10 text-primary border border-primary/20"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className={collapsed ? "md:hidden" : ""}>
+                        {item.label}
+                      </span>
+                    </Link>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right" className="hidden md:block">
+                      {item.label}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              ))}
+            </TooltipProvider>
           </nav>
 
           {/* Sidebar footer */}
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="rounded-lg bg-secondary/30 p-3 border border-border/20">
-              <p className="text-xs text-muted-foreground">Visualização</p>
-              <p className="text-sm font-medium truncate mt-0.5">
-                {selectedId === "ALL" 
-                  ? "Todas as Carteiras" 
-                  : selected?.name || "Nenhum selecionado"}
-              </p>
-            </div>
+          <div className="p-4 space-y-2">
+            {!collapsed && (
+              <div className="rounded-lg bg-secondary/30 p-3 border border-border/20">
+                <p className="text-xs text-muted-foreground">Visualização</p>
+                <p className="text-sm font-medium truncate mt-0.5">
+                  {selectedId === "ALL"
+                    ? "Todas as Carteiras"
+                    : selected?.name || "Nenhum selecionado"}
+                </p>
+              </div>
+            )}
           </div>
         </aside>
 

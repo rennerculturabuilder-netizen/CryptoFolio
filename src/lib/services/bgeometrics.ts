@@ -60,7 +60,7 @@ export function getLastValidValue(
   data: BGeometricsDataPoint[]
 ): { value: number; date: string } | null {
   for (let i = data.length - 1; i >= 0; i--) {
-    if (data[i].v != null && !isNaN(data[i].v) && data[i].v !== 0) {
+    if (data[i].v != null && !isNaN(data[i].v)) {
       return { value: data[i].v, date: data[i].d };
     }
   }

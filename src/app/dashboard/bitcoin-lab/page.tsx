@@ -27,15 +27,7 @@ export default function BitcoinLabPage() {
 
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Score Header */}
-      <ScoreHeader
-        btcPrice={data?.btcPrice ?? 0}
-        btcChange24h={data?.btcChange24h ?? 0}
-        indicators={indicators}
-        isLoading={isLoading}
-      />
-
-      {/* Tabs */}
+      {/* Tabs acima de tudo */}
       <Tabs defaultValue="bottom">
         <TabsList>
           <TabsTrigger value="bottom" className="gap-1.5">
@@ -49,6 +41,14 @@ export default function BitcoinLabPage() {
         </TabsList>
 
         <TabsContent value="bottom" className="space-y-6 mt-4">
+          {/* Score Header */}
+          <ScoreHeader
+            btcPrice={data?.btcPrice ?? 0}
+            btcChange24h={data?.btcChange24h ?? 0}
+            indicators={indicators}
+            isLoading={isLoading}
+          />
+
           {/* Chart */}
           <Card className="glass border-border/30">
             <CardContent className="p-4 md:p-6">

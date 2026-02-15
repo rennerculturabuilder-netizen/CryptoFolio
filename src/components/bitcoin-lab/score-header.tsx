@@ -1,12 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "./status-badge";
 import { countActiveSignals, STATUS_COLORS, INDICATOR_CONFIGS } from "@/lib/bitcoin-lab/config";
 import { type IndicatorValue, type SignalStatus } from "@/lib/bitcoin-lab/types";
 import { cn, formatUsd, formatPct } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { HelpCircle, MousePointerClick, TrendingDown, TrendingUp, X } from "lucide-react";
 
 interface ScoreHeaderProps {
   btcPrice: number;
@@ -60,6 +67,7 @@ export function ScoreHeader({
   indicators,
   isLoading,
 }: ScoreHeaderProps) {
+  const [helpOpen, setHelpOpen] = useState(false);
   if (isLoading) {
     return (
       <Card className="glass border-border/30">
@@ -88,15 +96,27 @@ export function ScoreHeader({
   const isPositive = btcChange24h >= 0;
 
   return (
-    <Card className="glass border-border/30">
-      <CardContent className="py-8 px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-          {/* Lado esquerdo — Score */}
+    <div className="space-y-2">
+      {/* Help button — fora do card */}
+      <div className="flex justify-center -mt-2">
+        <button
+          onClick={() => setHelpOpen(true)}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-green-500/20 border-2 border-green-500/40 text-green-400 hover:bg-green-500/30 hover:border-green-500/60 hover:shadow-[0_0_20px_rgba(34,197,94,0.25)] active:scale-95 transition-all duration-200 text-sm font-bold tracking-wide uppercase cursor-pointer shadow-[0_0_10px_rgba(34,197,94,0.12)]"
+        >
+          <HelpCircle className="h-4 w-4" />
+          Como funciona?
+          <MousePointerClick className="h-4 w-4 animate-pulse" />
+        </button>
+      </div>
+
+      <Card className="glass border-border/30">
+        <CardContent className="py-8 px-6">
+          <div className="flex justify-center">
           <div className="flex flex-col items-center text-center gap-3">
             {/* BTC Price */}
             <div className="flex items-baseline gap-3">
               <span className="text-4xl md:text-5xl font-bold tabular-nums">
-                {formatUsd(btcPrice)}
+                <span className="text-amber-500">&#8383;</span> {formatUsd(btcPrice)}
               </span>
               <span
                 className={cn(
@@ -112,6 +132,8 @@ export function ScoreHeader({
                 {formatPct(btcChange24h)}
               </span>
             </div>
+
+            <div className="w-16 h-px bg-border/40 mt-1" />
 
             {/* Question */}
             <p className="text-sm uppercase tracking-widest text-muted-foreground font-medium">
@@ -159,73 +181,123 @@ export function ScoreHeader({
               {getScoreDescription(counts, overallStatus, indicators.length)}
             </p>
           </div>
+        </div>
 
-          {/* Lado direito — Tabela de indicadores */}
-          <div className="rounded-lg border border-border/20 bg-zinc-900/50 overflow-hidden">
-            {/* Header da tabela */}
-            <div className="grid grid-cols-[1fr_80px_90px] gap-2 px-4 py-2.5 border-b border-border/20 bg-zinc-800/30">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Indicador
-              </span>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">
-                Valor
-              </span>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right">
-                Status
-              </span>
-            </div>
+      </CardContent>
 
-            {/* Rows */}
-            {indicators.map((ind) => {
-              const config = INDICATOR_CONFIGS.find((c) => c.id === ind.id);
-              const colors = STATUS_COLORS[ind.status];
-              return (
-                <div
-                  key={ind.id}
-                  className="grid grid-cols-[1fr_80px_90px] gap-2 px-4 py-2 border-b border-border/10 last:border-b-0 hover:bg-zinc-800/20 transition-colors"
-                >
-                  <span className="text-xs font-medium truncate">
-                    {config?.name ?? ind.id}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-xs font-bold tabular-nums text-right",
-                      colors.text
-                    )}
-                  >
-                    {ind.value !== null ? ind.value.toFixed(ind.value >= 10 ? 2 : 3) : "—"}
-                  </span>
-                  <div className="flex justify-end">
-                    <StatusBadge status={ind.status} size="sm" />
+      </Card>
+
+      {/* Help Dialog */}
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+        <DialogContent className="glass-strong max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Como funciona o Bitcoin Lab</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 text-sm text-muted-foreground leading-relaxed">
+            <section>
+              <h3 className="text-foreground font-semibold mb-1.5">O que é esta página?</h3>
+              <p>
+                O Bitcoin Lab analisa 7 indicadores on-chain para identificar se o Bitcoin está em zona de fundo.
+                Os dados vêm de fontes públicas (BGeometrics e CoinGecko) e são atualizados a cada 5 minutos.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-foreground font-semibold mb-1.5">Pontuação (Score)</h3>
+              <p>
+                O número grande (ex: <strong>5/7</strong>) mostra quantos dos 7 indicadores estão sinalizando
+                algum nível de fundo. Quanto mais indicadores ativos, mais forte o sinal.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-foreground font-semibold mb-2">Níveis de sinal</h3>
+              <div className="space-y-2.5">
+                <div className="flex gap-3 items-start">
+                  <span className="h-3 w-3 rounded-full bg-green-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-green-400 font-bold text-xs">EXTREMO</p>
+                    <p className="text-xs">
+                      O indicador atingiu níveis que historicamente marcam fundos de ciclo.
+                      Zona de acumulação máxima — raro e poderoso.
+                    </p>
                   </div>
                 </div>
-              );
-            })}
-
-            {/* Legenda */}
-            <div className="px-4 py-2.5 bg-zinc-800/20 border-t border-border/20">
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  Extremo — fundo histórico
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                  Forte — acumulação
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  Observação — esfriando
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
-                  Normal — sem sinal
-                </span>
+                <div className="flex gap-3 items-start">
+                  <span className="h-3 w-3 rounded-full bg-orange-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-orange-400 font-bold text-xs">FORTE</p>
+                    <p className="text-xs">
+                      O mercado está em estresse significativo. Valores nessa faixa já representam
+                      bons pontos de entrada historicamente.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <span className="h-3 w-3 rounded-full bg-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-amber-400 font-bold text-xs">OBSERVAÇÃO</p>
+                    <p className="text-xs">
+                      Sinais iniciais aparecendo. O mercado está esfriando, mas ainda não
+                      chegou em território de fundo confirmado. Vale monitorar.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <span className="h-3 w-3 rounded-full bg-zinc-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-zinc-400 font-bold text-xs">NORMAL</p>
+                    <p className="text-xs">
+                      O indicador não está sinalizando fundo. O mercado opera em condições normais
+                      para essa métrica.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
+            </section>
+
+            <section>
+              <h3 className="text-foreground font-semibold mb-1.5">Status geral</h3>
+              <p>O badge geral do dashboard é calculado assim:</p>
+              <ul className="list-disc pl-5 mt-1 space-y-0.5 text-xs">
+                <li><span className="text-green-400 font-semibold">EXTREMO</span> — 2+ indicadores em nível extremo</li>
+                <li><span className="text-orange-400 font-semibold">FORTE</span> — 1 extremo ou 3+ fortes</li>
+                <li><span className="text-amber-400 font-semibold">OBSERVAÇÃO</span> — 1 forte ou 3+ em observação</li>
+                <li><span className="text-zinc-400 font-semibold">NORMAL</span> — caso contrário</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="text-foreground font-semibold mb-1.5">Os 7 indicadores</h3>
+              <div className="space-y-2">
+                {INDICATOR_CONFIGS.map((config) => (
+                  <div key={config.id} className="border-l-2 border-border/30 pl-3">
+                    <p className="text-foreground font-medium text-xs">{config.name}</p>
+                    <p className="text-[11px]">{config.description}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-foreground font-semibold mb-1.5">Price Levels (Preços-alvo)</h3>
+              <p className="text-xs">
+                Cada indicador mostra a que preço o BTC precisaria chegar para ativar cada zona.
+                Esses valores são calculados em tempo real: <code className="text-foreground bg-zinc-800 px-1 rounded">preço_alvo = threshold x preço_btc / valor_indicador</code>.
+                As linhas tracejadas no gráfico representam esses níveis.
+              </p>
+            </section>
+
+            <section className="border-t border-border/20 pt-3">
+              <p className="text-[11px] text-muted-foreground/60">
+                Esta ferramenta é apenas informativa e não constitui recomendação de investimento.
+                Dados on-chain podem ter atrasos e imprecisões. Faça sua própria pesquisa.
+              </p>
+            </section>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

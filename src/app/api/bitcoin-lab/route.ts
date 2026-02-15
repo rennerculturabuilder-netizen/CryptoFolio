@@ -14,9 +14,6 @@ interface CoinGeckoMarketChart {
   prices: [number, number][];
 }
 
-// OHLC: [timestamp, open, high, low, close]
-type CoinGeckoOHLC = [number, number, number, number, number][];
-
 interface CoinGeckoSimplePrice {
   bitcoin: {
     usd: number;
@@ -39,42 +36,60 @@ async function fetchBtcPrice(): Promise<{
   };
 }
 
+interface CryptoCompareDay {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+interface CryptoCompareResponse {
+  Response: string;
+  Data: { Data: CryptoCompareDay[] };
+}
+
 async function fetchBtcPriceHistory(): Promise<{
   history: PricePoint[];
   sma200: number | null;
 }> {
-  // Buscar OHLC real + market_chart para SMA200 em paralelo
-  const [ohlcRes, chartRes] = await Promise.all([
+  // CryptoCompare: OHLC diário real desde 2010 (grátis, sem API key)
+  // CoinGecko: 365 dias para SMA200
+  const [ccRes, cgRes] = await Promise.all([
     fetch(
-      `${COINGECKO_BASE}/coins/bitcoin/ohlc?vs_currency=usd&days=365`
+      "https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&allData=true"
     ),
     fetch(
       `${COINGECKO_BASE}/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily`
     ),
   ]);
 
-  if (!ohlcRes.ok) throw new Error("CoinGecko OHLC fetch failed");
-  if (!chartRes.ok) throw new Error("CoinGecko chart fetch failed");
+  if (!ccRes.ok) throw new Error("CryptoCompare fetch failed");
+  const ccData: CryptoCompareResponse = await ccRes.json();
+  const allDays = ccData.Data.Data;
 
-  const ohlcData: CoinGeckoOHLC = await ohlcRes.json();
-  const chartData: CoinGeckoMarketChart = await chartRes.json();
+  // Filtrar a partir de 2013 e ignorar dias sem preço — OHLC diário
+  const start2013 = Date.UTC(2013, 0, 1) / 1000;
+  const history: PricePoint[] = allDays
+    .filter((d) => d.time >= start2013 && d.close > 0)
+    .map((d) => ({
+      date: new Date(d.time * 1000).toISOString().split("T")[0],
+      price: d.close,
+      open: d.open,
+      high: d.high,
+      low: d.low,
+      close: d.close,
+    }));
 
-  // OHLC candles reais (dedup por data)
-  const seen = new Set<string>();
-  const history: PricePoint[] = [];
-  for (const [ts, open, high, low, close] of ohlcData) {
-    const date = new Date(ts).toISOString().split("T")[0];
-    if (seen.has(date)) continue;
-    seen.add(date);
-    history.push({ date, price: close, open, high, low, close });
-  }
-
-  // SMA200 calculada com dados diários do market_chart
-  const dailyPrices = chartData.prices.map(([, price]) => price);
+  // SMA200 calculada com CoinGecko (365 dias diários)
   let sma200: number | null = null;
-  if (dailyPrices.length >= 200) {
-    const last200 = dailyPrices.slice(-200);
-    sma200 = last200.reduce((sum, p) => sum + p, 0) / 200;
+  if (cgRes.ok) {
+    const chartData: CoinGeckoMarketChart = await cgRes.json();
+    const dailyPrices = chartData.prices.map(([, price]) => price);
+    if (dailyPrices.length >= 200) {
+      const last200 = dailyPrices.slice(-200);
+      sma200 = last200.reduce((sum, p) => sum + p, 0) / 200;
+    }
   }
 
   return { history, sma200 };

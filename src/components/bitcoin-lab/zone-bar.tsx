@@ -25,6 +25,7 @@ export function ZoneBar({ config, value }: ZoneBarProps) {
     const nonNormalZones = zones.filter((z) => z.status !== "NORMAL");
     const maxThreshold = nonNormalZones[nonNormalZones.length - 1]?.threshold ?? 1;
     const range = maxThreshold * 1.5;
+    if (range === 0) return 50;
     const clamped = Math.max(0, Math.min(value, range));
     return (clamped / range) * 100;
   };
